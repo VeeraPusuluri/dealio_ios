@@ -1,0 +1,16 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.moved-aside
+
+# XcodeGen generates this from project.yml — keep it out of source control.
+DealioBuilder.xcodeproj/
+
+# macOS
+.DS_Store
+
+# JetBrains IDE
+.idea/
