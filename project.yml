@@ -12,12 +12,26 @@ settings:
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: "12.15.0"
 targets:
   DealioBuilder:
     type: application
     platform: iOS
     sources:
       - path: DealioBuilder
+      - path: GoogleService-Info.plist
+        buildPhase: resources
+    dependencies:
+      - package: Firebase
+        product: FirebaseCore
+      - package: Firebase
+        product: FirebaseMessaging
+    entitlements:
+      path: DealioBuilder/DealioBuilder.entitlements
+      properties: {}
     info:
       path: DealioBuilder/Info.plist
       properties:

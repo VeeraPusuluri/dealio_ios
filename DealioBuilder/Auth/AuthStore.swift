@@ -45,6 +45,8 @@ final class AuthStore: ObservableObject {
                 self.builderId = defaults.integer(forKey: builderIdKey)
             }
             self.isAuthenticated = true
+            // Re-register the device for push on a restored session.
+            Task { await PushRegistrar.shared.registerIfPossible() }
         }
     }
 
@@ -106,6 +108,8 @@ final class AuthStore: ObservableObject {
         self.user = data.user
         persistSession()
         self.isAuthenticated = true
+        // Register this device for push now that we're authenticated.
+        Task { await PushRegistrar.shared.registerIfPossible() }
         // Only builders need a builder-profile id resolved up front.
         if (data.user.role ?? "").uppercased() == "BUILDER" {
             try? await ensureBuilder()
