@@ -3,52 +3,41 @@ import SwiftUI
 struct CustomerProfileView: View {
     @EnvironmentObject private var auth: AuthStore
 
+    private var displayName: String { auth.user?.fullName ?? "Customer" }
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 20) {
-                    // Header
-                    VStack(spacing: 12) {
-                        InitialsAvatar(name: auth.user?.fullName, size: 72)
-                        VStack(spacing: 2) {
-                            Text(auth.user?.fullName ?? "Customer").font(.title3.weight(.bold))
-                            if let phone = auth.user?.phone {
-                                Text(phone).font(.subheadline).foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    .padding(.top, 16)
-
-                    // Details
-                    VStack(spacing: 0) {
-                        InfoRow(label: "Email", value: auth.user?.email ?? "—")
-                        InfoRow(label: "Account", value: (auth.user?.role ?? "Customer").capitalized)
-                    }
-                    .padding(.horizontal, 16)
-                    .cardSurface()
-                    .padding(.horizontal)
+                VStack(spacing: 18) {
+                    header
 
                     // Home & finance
-                    VStack(spacing: 0) {
-                        NavRow("My properties", "house") { CustomerPropertyView() }
-                        NavRow("Home loans", "indianrupeesign.circle") { CustomerLoansView() }
-                        NavRow("EMI calculator", "function") { CustomerEMIView() }
-                        NavRow("Loan eligibility", "checkmark.seal") { CustomerLoanEligibilityView() }
-                        NavRow("Loan top-up", "plus.rectangle.on.folder") { CustomerTopupView() }
-                        NavRow("Investments", "chart.line.uptrend.xyaxis") { CustomerInvestmentsView() }
+                    section("Home & finance") {
+                        ProfileRow("My properties", "house.fill", .blue) { CustomerPropertyView() }
+                        divider
+                        ProfileRow("Home loans", "indianrupeesign.circle.fill", .green) { CustomerLoansView() }
+                        divider
+                        ProfileRow("EMI calculator", "function", .indigo) { CustomerEMIView() }
+                        divider
+                        ProfileRow("Loan eligibility", "checkmark.seal.fill", .teal) { CustomerLoanEligibilityView() }
+                        divider
+                        ProfileRow("Loan top-up", "plus.rectangle.on.folder.fill", .orange) { CustomerTopupView() }
+                        divider
+                        ProfileRow("Investments", "chart.line.uptrend.xyaxis", .purple) { CustomerInvestmentsView() }
                     }
-                    .padding(.horizontal, 16).cardSurface().padding(.horizontal)
 
                     // Documents & support
-                    VStack(spacing: 0) {
-                        NavRow("Documents", "doc.text") { CustomerDocumentsView() }
-                        NavRow("Conversations", "bubble.left.and.bubble.right") { CustomerConversationsView() }
-                        NavRow("Possession tracker", "house.lodge") { CustomerPossessionView() }
-                        NavRow("Snagging report", "wrench.and.screwdriver") { CustomerSnaggingView() }
-                        NavRow("Contact us", "headphones") { CustomerContactView() }
+                    section("Documents & support") {
+                        ProfileRow("Documents", "doc.text.fill", .blue) { CustomerDocumentsView() }
+                        divider
+                        ProfileRow("Conversations", "bubble.left.and.bubble.right.fill", .teal) { CustomerConversationsView() }
+                        divider
+                        ProfileRow("Possession tracker", "house.lodge.fill", .orange) { CustomerPossessionView() }
+                        divider
+                        ProfileRow("Snagging report", "wrench.and.screwdriver.fill", .red) { CustomerSnaggingView() }
+                        divider
+                        ProfileRow("Contact us", "headphones", .green) { CustomerContactView() }
                     }
-                    .padding(.horizontal, 16).cardSurface().padding(.horizontal)
-                    // (helper NavRow + remaining screens defined in this batch)
 
                     Button(role: .destructive) { auth.logout() } label: {
                         Label("Log out", systemImage: "rectangle.portrait.and.arrow.right")
@@ -59,41 +48,92 @@ struct CustomerProfileView: View {
                     }
                     .padding(.horizontal)
 
-                    DealioLogo(markSize: 28, fontSize: 16)
-                        .opacity(0.5)
-                        .padding(.top, 8)
+                    DealioLogo(markSize: 26, fontSize: 15)
+                        .opacity(0.45)
+                        .padding(.top, 4)
                 }
                 .padding(.bottom, 30)
             }
             .background(Color.dealioMist.ignoresSafeArea())
-            .navigationTitle("Profile")
+            .navigationBarHidden(true)
         }
+    }
+
+    // MARK: Header
+
+    private var header: some View {
+        VStack(spacing: 14) {
+            InitialsAvatar(name: displayName, tint: .dealioTealBright, size: 76)
+                .overlay(Circle().strokeBorder(.white.opacity(0.25), lineWidth: 1))
+
+            VStack(spacing: 3) {
+                Text(displayName)
+                    .font(.title3.weight(.bold)).foregroundStyle(.white)
+                if let phone = auth.user?.phone {
+                    Text(phone).font(.subheadline).foregroundStyle(.white.opacity(0.85))
+                }
+            }
+
+            // Email + account chips
+            HStack(spacing: 8) {
+                if let email = auth.user?.email, !email.isEmpty {
+                    chip("envelope.fill", email)
+                }
+                chip("person.fill", (auth.user?.role ?? "Customer").capitalized)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 28)
+        .padding(.bottom, 24)
+        .padding(.horizontal, 20)
+        .background(
+            LinearGradient(colors: [.dealioNavyDeep, .dealioNavyMid, .dealioTealDeep],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+                .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 28, bottomTrailingRadius: 28, style: .continuous))
+                .ignoresSafeArea(edges: .top)
+        )
+    }
+
+    private func chip(_ systemImage: String, _ text: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: systemImage).font(.caption2)
+            Text(text).font(.caption.weight(.medium)).lineLimit(1)
+        }
+        .padding(.horizontal, 10).padding(.vertical, 5)
+        .background(.white.opacity(0.15), in: Capsule())
+        .foregroundStyle(.white)
+    }
+
+    // MARK: Section helpers
+
+    private func section<Content: View>(_ title: String, @ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased())
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.secondary)
+                .tracking(0.6)
+                .padding(.leading, 4)
+            VStack(spacing: 0) { content() }
+                .padding(.horizontal, 14)
+                .cardSurface()
+        }
+        .padding(.horizontal)
+    }
+
+    private var divider: some View {
+        Divider().padding(.leading, 42)
     }
 }
 
-private struct InfoRow: View {
-    let label: String
-    let value: String
-    var body: some View {
-        HStack {
-            Text(label).foregroundStyle(.secondary)
-            Spacer()
-            Text(value).fontWeight(.medium)
-        }
-        .font(.subheadline)
-        .padding(.vertical, 13)
-        .overlay(Divider(), alignment: .bottom)
-    }
-}
-
-/// A profile menu row that pushes a destination.
-struct NavRow<Destination: View>: View {
+/// A profile menu row with a coloured icon tile that pushes a destination.
+private struct ProfileRow<Destination: View>: View {
     let label: String
     let systemImage: String
+    let tint: Color
     @ViewBuilder let destination: () -> Destination
 
-    init(_ label: String, _ systemImage: String, @ViewBuilder destination: @escaping () -> Destination) {
-        self.label = label; self.systemImage = systemImage; self.destination = destination
+    init(_ label: String, _ systemImage: String, _ tint: Color, @ViewBuilder destination: @escaping () -> Destination) {
+        self.label = label; self.systemImage = systemImage; self.tint = tint; self.destination = destination
     }
 
     var body: some View {
@@ -101,13 +141,17 @@ struct NavRow<Destination: View>: View {
             destination()
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: systemImage).foregroundStyle(.brandTeal).frame(width: 24)
-                Text(label).font(.subheadline).foregroundStyle(.primary)
+                Image(systemName: systemImage)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 30, height: 30)
+                    .background(tintGradient(tint), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                Text(label).font(.subheadline.weight(.medium)).foregroundStyle(.primary)
                 Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
             }
-            .padding(.vertical, 13)
-            .overlay(Divider(), alignment: .bottom)
+            .padding(.vertical, 11)
         }
+        .buttonStyle(.plain)
     }
 }

@@ -68,6 +68,8 @@ struct Project: Codable, Identifiable, Hashable {
     let possessionDate: String?
     let reraNumber: String?
     let published: Bool?
+    var featured: Bool? = nil
+    var closingSoon: Bool? = nil
     var videoUrl: String? = nil
     var builderId: Int? = nil
     var configurations: [String]? = nil

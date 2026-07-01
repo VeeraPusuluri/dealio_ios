@@ -25,6 +25,40 @@ final class APIClient {
         try await send(path, method: "POST", body: body, authorized: authorized)
     }
 
+    /// Uploads a single file as `multipart/form-data`, with optional extra text fields
+    /// (e.g. `docType`). Mirrors the backend's `multer` single-file upload endpoints.
+    func upload<T: Decodable>(
+        _ path: String, fileData: Data, fileName: String, mimeType: String,
+        fields: [String: String] = [:], authorized: Bool = true
+    ) async throws -> T {
+        guard let url = URL(string: AppConfig.apiBaseURL.absoluteString + path) else {
+            throw APIError.invalidURL
+        }
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        if authorized, let authToken {
+            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+        }
+
+        var body = Data()
+        for (key, value) in fields {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(value)\r\n".data(using: .utf8)!)
+        }
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(fileData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+
+        let (data, response) = try await perform(request)
+        return try decode(data, response)
+    }
+
     private func send<T: Decodable, B: Encodable>(
         _ path: String, method: String, body: B?, authorized: Bool
     ) async throws -> T {
@@ -43,14 +77,19 @@ final class APIClient {
             request.httpBody = try JSONEncoder().encode(body)
         }
 
-        let data: Data
-        let response: URLResponse
+        let (data, response) = try await perform(request)
+        return try decode(data, response)
+    }
+
+    private func perform(_ request: URLRequest) async throws -> (Data, URLResponse) {
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
+            return try await URLSession.shared.data(for: request)
         } catch {
             throw APIError.transport(error)
         }
+    }
 
+    private func decode<T: Decodable>(_ data: Data, _ response: URLResponse) throws -> T {
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
         if http.statusCode == 401 { throw APIError.unauthorized }
 

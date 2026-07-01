@@ -47,6 +47,15 @@ struct CpInfo: Codable {
     let aadhaarVerified: Bool?
     let panVerified: Bool?
     let reraVerified: Bool?
+    let aadhaarUrl: String?
+    let panUrl: String?
+    let reraUrl: String?
+}
+
+/// Response from `POST /cp/:cpUserId/documents` (multipart upload).
+struct CpDocumentUploadResponse: Codable {
+    let url: String?
+    let docType: String?
 }
 
 /// A CRM contact — `cp/:id/contacts`.
@@ -80,6 +89,30 @@ struct CpMeeting: Codable, Identifiable {
     var whenText: String {
         [confirmedDate ?? preferredDate, confirmedTime ?? preferredTime]
             .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+}
+
+/// Today's meetings, follow-ups, and callbacks — `cp/:id/due-today`.
+struct CpDueToday: Codable {
+    let meetings: [DueMeeting]
+    let followUps: [CpFollowUp]
+    let callLogs: [DueCallLog]
+
+    var count: Int { meetings.count + followUps.count + callLogs.count }
+
+    struct DueMeeting: Codable, Identifiable {
+        let id: String
+        let customerName: String?
+        let projectName: String?
+        let meetingType: String?
+        let time: String?
+    }
+
+    struct DueCallLog: Codable, Identifiable {
+        let id: String
+        let customerName: String?
+        let projectName: String?
+        let outcome: String?
     }
 }
 

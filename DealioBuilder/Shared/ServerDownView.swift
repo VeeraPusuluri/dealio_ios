@@ -12,6 +12,11 @@ final class ServerStatusMonitor: ObservableObject {
 
     private var pollTask: Task<Void, Never>?
 
+    // Only show the "server down" screen after several pings miss in a row — a single
+    // slow response or transient blip shouldn't look like an outage.
+    private var consecutiveFailures = 0
+    private let failThreshold = 3
+
     init() { startPolling() }
 
     private func startPolling() {
@@ -29,13 +34,22 @@ final class ServerStatusMonitor: ObservableObject {
 
     private func ping() async {
         checking = true
+        // Give a slow / cold-starting backend room to respond before judging it unreachable.
+        let ok: Bool
         do {
-            var request = URLRequest(url: healthURL, timeoutInterval: 5)
+            var request = URLRequest(url: healthURL, timeoutInterval: 10)
             request.httpMethod = "GET"
             let (_, response) = try await URLSession.shared.data(for: request)
-            isDown = (response as? HTTPURLResponse)?.statusCode != 200
+            ok = (response as? HTTPURLResponse)?.statusCode == 200
         } catch {
-            isDown = true
+            ok = false
+        }
+        if ok {
+            consecutiveFailures = 0
+            isDown = false
+        } else {
+            consecutiveFailures += 1
+            if consecutiveFailures >= failThreshold { isDown = true }
         }
         checking = false
     }

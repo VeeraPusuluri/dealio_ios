@@ -4,6 +4,7 @@ import SwiftUI
 final class CPOverviewModel: ObservableObject {
     @Published var profile: CpProfile?
     @Published var leads: [CpLead] = []
+    @Published var dueToday: CpDueToday?
     @Published var loading = true
     @Published var error: String?
 
@@ -13,8 +14,10 @@ final class CPOverviewModel: ObservableObject {
         do {
             async let profileReq: CpProfile = APIClient.shared.get("/cp/\(cpUserId)/profile")
             async let leadsReq: [CpLead] = APIClient.shared.get("/cp/\(cpUserId)/leads")
+            async let dueReq: CpDueToday = APIClient.shared.get("/cp/\(cpUserId)/due-today")
             profile = try await profileReq
             leads = (try? await leadsReq) ?? []
+            dueToday = try? await dueReq
         } catch {
             self.error = authMessage(error)
         }
@@ -40,6 +43,8 @@ struct CPOverviewView: View {
                         ErrorBanner(message: error).padding(.horizontal)
                     } else {
                         statGrid
+                        dueTodaySection
+                        quickActions
                         recentLeads
                     }
                 }
@@ -96,6 +101,67 @@ struct CPOverviewView: View {
         .padding(.horizontal)
     }
 
+    private var dueTodaySection: some View {
+        let due = model.dueToday
+        let count = due?.count ?? 0
+        return NavigationLink {
+            CPFollowUpsView()
+        } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Due today").font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
+                    if count > 0 {
+                        Text("\(count)").font(.caption2.weight(.bold)).foregroundStyle(.white)
+                            .padding(.horizontal, 7).padding(.vertical, 2)
+                            .background(Color.dealioOrange, in: Capsule())
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                }
+                if count == 0 {
+                    Text("Nothing due today — you're all caught up!")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else {
+                    VStack(spacing: 6) {
+                        ForEach(due?.meetings ?? []) { m in
+                            DueRow(title: m.customerName ?? "Meeting", subtitle: [m.projectName, m.time].compactMap { $0 }.joined(separator: " · "))
+                        }
+                        ForEach(due?.followUps ?? []) { f in
+                            DueRow(title: f.customerName ?? "Follow-up", subtitle: [f.projectName, f.reason].compactMap { $0 }.joined(separator: " · "))
+                        }
+                        ForEach(due?.callLogs ?? []) { c in
+                            DueRow(title: c.customerName ?? "Callback", subtitle: [c.projectName, c.outcome].compactMap { $0 }.joined(separator: " · "))
+                        }
+                    }
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cardSurface()
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal)
+    }
+
+    private var quickActions: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "Quick actions")
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                QuickActionTile(title: "Browse projects", systemImage: "building.2") { selection = 2 }
+                NavigationLink { CPContactsView() } label: {
+                    QuickActionTile.content(title: "Contacts", systemImage: "person.crop.circle.badge.plus")
+                }
+                NavigationLink { CPFollowUpsView() } label: {
+                    QuickActionTile.content(title: "Follow-ups", systemImage: "bell.badge")
+                }
+                NavigationLink { CPMeetingsView() } label: {
+                    QuickActionTile.content(title: "Meetings", systemImage: "calendar")
+                }
+            }
+        }
+        .padding(.horizontal)
+    }
+
     private var recentLeads: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
@@ -110,6 +176,49 @@ struct CPOverviewView: View {
             }
         }
         .padding(.horizontal)
+    }
+}
+
+private struct DueRow: View {
+    let title: String
+    let subtitle: String
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle().fill(Color.dealioOrange).frame(width: 6, height: 6)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.caption.weight(.semibold)).lineLimit(1)
+                if !subtitle.isEmpty {
+                    Text(subtitle).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+private struct QuickActionTile: View {
+    let title: String
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) { Self.content(title: title, systemImage: systemImage) }
+    }
+
+    static func content(title: String, systemImage: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.subheadline.weight(.semibold)).foregroundStyle(Color.brandTeal)
+                .frame(width: 36, height: 36)
+                .background(Color.brandTeal.opacity(0.12), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            Text(title).font(.subheadline.weight(.medium)).foregroundStyle(.primary).lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.black.opacity(0.06)))
+        .foregroundStyle(.primary)
     }
 }
 

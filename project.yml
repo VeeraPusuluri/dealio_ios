@@ -16,6 +16,9 @@ packages:
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk
     from: "12.15.0"
+  Lottie:
+    url: https://github.com/airbnb/lottie-ios
+    from: "4.5.0"
 targets:
   DealioBuilder:
     type: application
@@ -29,6 +32,8 @@ targets:
         product: FirebaseCore
       - package: Firebase
         product: FirebaseMessaging
+      - package: Lottie
+        product: Lottie
     entitlements:
       path: DealioBuilder/DealioBuilder.entitlements
       properties: {}
