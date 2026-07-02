@@ -108,12 +108,15 @@ final class ExploreModel: ObservableObject {
 struct ExploreView: View {
     @EnvironmentObject private var auth: AuthStore
     @StateObject private var model = ExploreModel()
+    @State private var searchExpanded = false
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         NavigationStack {
+            GeometryReader { geo in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
-                    hero
+                    hero(topInset: geo.safeAreaInsets.top)
 
                     cityChips
 
@@ -154,13 +157,7 @@ struct ExploreView: View {
                 .padding(.bottom, 24)
             }
             .background(Color.dealioMist.ignoresSafeArea())
-            .overlay(alignment: .top) {
-                // Tint the status-bar area to match the "Hi" header gradient.
-                LinearGradient(colors: [.dealioNavyDeep, .dealioNavyMid, .dealioTealDeep],
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
-                    .frame(height: 0)
-                    .ignoresSafeArea(edges: .top)
-                    .allowsHitTesting(false)
+            .ignoresSafeArea(.container, edges: .top)
             }
             .navigationDestination(for: Project.self) { CustomerProjectDetailView(project: $0) }
             .navigationBarHidden(true)
@@ -171,38 +168,58 @@ struct ExploreView: View {
 
     // MARK: Hero
 
-    private var hero: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Hi \(auth.user?.fullName?.components(separatedBy: " ").first ?? "there") 👋")
-                    .font(.title2.weight(.bold)).foregroundStyle(.white)
-                Text("Find your next home")
-                    .font(.subheadline.weight(.semibold)).foregroundStyle(Color.dealioTealBright)
-            }
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Search projects, localities…", text: $model.query)
-                    .textInputAutocapitalization(.never)
-                if !model.query.isEmpty {
-                    Button { model.query = "" } label: {
-                        Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+    private func hero(topInset: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: searchExpanded ? 12 : 0) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Hi \(auth.user?.fullName?.components(separatedBy: " ").first ?? "there") 👋")
+                        .font(.title3.weight(.bold)).foregroundStyle(.white)
+                    Text("Find your next home")
+                        .font(.caption.weight(.semibold)).foregroundStyle(Color.dealioTealBright)
+                }
+                Spacer()
+                Button {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                        searchExpanded.toggle()
+                        if !searchExpanded { model.query = "" }
                     }
+                    searchFocused = searchExpanded
+                } label: {
+                    Image(systemName: searchExpanded ? "xmark" : "magnifyingglass")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 38, height: 38)
+                        .background(.white.opacity(0.15), in: Circle())
                 }
             }
-            .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+
+            if searchExpanded {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                    TextField("Search projects, localities…", text: $model.query)
+                        .textInputAutocapitalization(.never)
+                        .focused($searchFocused)
+                        .submitLabel(.search)
+                    if !model.query.isEmpty {
+                        Button { model.query = "" } label: {
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+                .padding(.horizontal, 14).padding(.vertical, 11)
+                .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
         .padding(.horizontal, 20)
-        .padding(.top, 14)
-        .padding(.bottom, 18)
+        .padding(.top, topInset + 10)
+        .padding(.bottom, searchExpanded ? 16 : 14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             LinearGradient(colors: [.dealioNavyDeep, .dealioNavyMid, .dealioTealDeep],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
-                .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 26, bottomTrailingRadius: 26, style: .continuous))
-                .ignoresSafeArea(edges: .top)
         )
+        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 24, bottomTrailingRadius: 24, style: .continuous))
     }
 
     // MARK: City filter

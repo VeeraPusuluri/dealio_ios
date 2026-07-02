@@ -24,6 +24,8 @@ extension Color {
 
     static let dealioOrange = Color(hex: 0xFF8930)
     static let dealioMist = Color(hex: 0xF6F8FB)
+    static let dealioFieldFill = Color(hex: 0xF3F6FA)
+    static let dealioButtonDisabled = Color(hex: 0xE7ECF3)
     static let dealioCardBorder = Color(hex: 0xE3E9F1)
     static let dealioTextPrimary = Color(hex: 0x13243A)
     static let dealioTextSecondary = Color(hex: 0x5C6B80)

@@ -86,29 +86,29 @@ struct AuthScaffold<Content: View>: View {
         .background(
             ZStack {
                 LinearGradient(
-                    colors: [.dealioNavyDeep, .dealioNavyMid, .dealioNavyPrimary],
-                    startPoint: .top,
-                    endPoint: .bottom
+                    colors: [.dealioNavyDeep, .dealioNavyMid, .dealioTealDeep],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
-                // Teal glow orbs add depth to the flat navy.
+                // Teal glow orbs add depth and energy to the navy.
                 Circle()
                     .fill(
                         RadialGradient(
-                            colors: [Color.dealioTealBright.opacity(0.24), .clear],
-                            center: .center, startRadius: 0, endRadius: 130
+                            colors: [Color.dealioTealBright.opacity(0.38), .clear],
+                            center: .center, startRadius: 0, endRadius: 150
                         )
                     )
-                    .frame(width: 260, height: 260)
+                    .frame(width: 300, height: 300)
                     .offset(x: 150, y: -90)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                 Circle()
                     .fill(
                         RadialGradient(
-                            colors: [Color.dealioTealBright.opacity(0.10), .clear],
-                            center: .center, startRadius: 0, endRadius: 100
+                            colors: [Color.dealioTealBright.opacity(0.16), .clear],
+                            center: .center, startRadius: 0, endRadius: 110
                         )
                     )
-                    .frame(width: 200, height: 200)
+                    .frame(width: 220, height: 220)
                     .offset(x: -70, y: 60)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
             }

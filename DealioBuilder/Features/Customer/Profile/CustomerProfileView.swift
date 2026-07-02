@@ -2,14 +2,16 @@ import SwiftUI
 
 struct CustomerProfileView: View {
     @EnvironmentObject private var auth: AuthStore
+    @EnvironmentObject private var appLock: AppLockManager
 
     private var displayName: String { auth.user?.fullName ?? "Customer" }
 
     var body: some View {
         NavigationStack {
+            GeometryReader { geo in
             ScrollView {
                 VStack(spacing: 18) {
-                    header
+                    header(topInset: geo.safeAreaInsets.top)
 
                     // Home & finance
                     section("Home & finance") {
@@ -39,6 +41,11 @@ struct CustomerProfileView: View {
                         ProfileRow("Contact us", "headphones", .green) { CustomerContactView() }
                     }
 
+                    // Security
+                    section("Security") {
+                        AppLockToggle()
+                    }
+
                     Button(role: .destructive) { auth.logout() } label: {
                         Label("Log out", systemImage: "rectangle.portrait.and.arrow.right")
                             .font(.headline)
@@ -55,13 +62,15 @@ struct CustomerProfileView: View {
                 .padding(.bottom, 30)
             }
             .background(Color.dealioMist.ignoresSafeArea())
+            .ignoresSafeArea(.container, edges: .top)
+            }
             .navigationBarHidden(true)
         }
     }
 
     // MARK: Header
 
-    private var header: some View {
+    private func header(topInset: CGFloat) -> some View {
         VStack(spacing: 14) {
             InitialsAvatar(name: displayName, tint: .dealioTealBright, size: 76)
                 .overlay(Circle().strokeBorder(.white.opacity(0.25), lineWidth: 1))
@@ -83,15 +92,14 @@ struct CustomerProfileView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 28)
+        .padding(.top, topInset + 20)
         .padding(.bottom, 24)
         .padding(.horizontal, 20)
         .background(
             LinearGradient(colors: [.dealioNavyDeep, .dealioNavyMid, .dealioTealDeep],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
-                .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 28, bottomTrailingRadius: 28, style: .continuous))
-                .ignoresSafeArea(edges: .top)
         )
+        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 28, bottomTrailingRadius: 28, style: .continuous))
     }
 
     private func chip(_ systemImage: String, _ text: String) -> some View {

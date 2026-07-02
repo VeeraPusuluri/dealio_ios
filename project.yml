@@ -41,6 +41,7 @@ targets:
       path: DealioBuilder/Info.plist
       properties:
         CFBundleDisplayName: Dealio Builder
+        NSFaceIDUsageDescription: Dealio uses Face ID to unlock the app and keep your account secure.
         UILaunchScreen:
           UIColorName: LaunchBackground
         UIApplicationSceneManifest:

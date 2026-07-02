@@ -95,25 +95,43 @@ struct CPMeetingsView: View {
     @State private var meetings: [CpMeeting] = []
     @State private var loading = true
     @State private var error: String?
+    @State private var mode: MeetingViewMode = .list
+
+    private var calMeetings: [CalMeeting] {
+        meetings.compactMap { m in
+            CalMeeting(id: "\(m.id)", dateString: m.confirmedDate ?? m.preferredDate,
+                       time: m.confirmedTime ?? m.preferredTime, title: m.customerName ?? "Visitor",
+                       subtitle: nil, status: m.status, color: statusColor(m.status))
+        }
+    }
 
     var body: some View {
-        Group {
-            if loading { ProgressView() }
-            else if let error { ErrorBanner(message: error).padding() }
-            else if meetings.isEmpty {
-                ContentUnavailableView("No meetings yet", systemImage: "calendar",
-                    description: Text("Site visits you arrange for your leads appear here."))
-            } else {
-                List(meetings) { m in
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(m.customerName ?? "Visitor").font(.subheadline.weight(.semibold))
-                            Spacer()
-                            StatusBadge(text: m.status ?? "Pending", color: statusColor(m.status))
-                        }
-                        if !m.whenText.isEmpty { Label(m.whenText, systemImage: "clock").font(.caption).foregroundStyle(.secondary) }
-                    }.padding(.vertical, 4)
-                }.listStyle(.insetGrouped)
+        VStack(spacing: 0) {
+            Picker("", selection: $mode) {
+                ForEach(MeetingViewMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented).padding(.horizontal).padding(.top, 8).padding(.bottom, 4)
+
+            Group {
+                if loading { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
+                else if let error { ErrorBanner(message: error).padding() }
+                else if mode == .calendar {
+                    MeetingCalendarView(meetings: calMeetings)
+                } else if meetings.isEmpty {
+                    ContentUnavailableView("No meetings yet", systemImage: "calendar",
+                        description: Text("Site visits you arrange for your leads appear here."))
+                } else {
+                    List(meetings) { m in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(m.customerName ?? "Visitor").font(.subheadline.weight(.semibold))
+                                Spacer()
+                                StatusBadge(text: m.status ?? "Pending", color: statusColor(m.status))
+                            }
+                            if !m.whenText.isEmpty { Label(m.whenText, systemImage: "clock").font(.caption).foregroundStyle(.secondary) }
+                        }.padding(.vertical, 4)
+                    }.listStyle(.insetGrouped)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.dealioMist.ignoresSafeArea())

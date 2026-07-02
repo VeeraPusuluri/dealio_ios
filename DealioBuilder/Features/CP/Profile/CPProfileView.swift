@@ -128,6 +128,13 @@ struct CPProfileView: View {
                     }
                     .padding(.horizontal, 16).cardSurface().padding(.horizontal)
 
+                    // Security
+                    VStack(alignment: .leading, spacing: 0) {
+                        SectionHeader(title: "Security").padding(.vertical, 10)
+                        AppLockToggle()
+                    }
+                    .padding(.horizontal, 16).cardSurface().padding(.horizontal)
+
                     Button(role: .destructive) { auth.logout() } label: {
                         Label("Log out", systemImage: "rectangle.portrait.and.arrow.right")
                             .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 14)

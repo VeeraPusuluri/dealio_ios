@@ -19,6 +19,10 @@ struct DealioField<Content: View>: View {
                 .frame(height: 52)
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(focused ? Color.white : Color.dealioFieldFill)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(focused ? Color.dealioTeal : Color.dealioCardBorder,
                                 lineWidth: focused ? 2 : 1)
                 )
@@ -87,7 +91,7 @@ struct OtpInput: View {
                         .foregroundColor(.dealioNavy)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.white))
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(active ? Color.white : Color.dealioFieldFill))
                         .overlay(
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
                                 .stroke(active ? Color.dealioTeal : Color.dealioCardBorder,
@@ -124,6 +128,16 @@ struct DealioButton: View {
     var enabled: Bool = true
     let action: () -> Void
 
+    private var isActive: Bool { enabled && !loading }
+
+    private var fill: AnyShapeStyle {
+        isActive
+            ? AnyShapeStyle(LinearGradient(
+                colors: [.dealioTeal, .dealioTealDeep],
+                startPoint: .leading, endPoint: .trailing))
+            : AnyShapeStyle(Color.dealioButtonDisabled)
+    }
+
     var body: some View {
         Button(action: action) {
             ZStack {
@@ -135,11 +149,10 @@ struct DealioButton: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 54)
-            .background(
-                (enabled && !loading) ? Color.dealioNavy : Color.dealioNavy.opacity(0.4),
-                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-            )
-            .foregroundStyle(.white)
+            .background(fill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .foregroundStyle(isActive ? Color.white : Color.dealioTextSecondary)
+            .shadow(color: isActive ? Color.dealioTeal.opacity(0.35) : .clear,
+                    radius: 12, x: 0, y: 6)
         }
         .disabled(!enabled || loading)
     }

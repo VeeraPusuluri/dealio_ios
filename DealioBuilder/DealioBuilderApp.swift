@@ -72,6 +72,8 @@ struct DealioBuilderApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var auth = AuthStore()
     @StateObject private var serverMonitor = ServerStatusMonitor()
+    @StateObject private var appLock = AppLockManager()
+    @Environment(\.scenePhase) private var scenePhase
     @State private var showSplash = true
 
     var body: some Scene {
@@ -83,8 +85,17 @@ struct DealioBuilderApp: App {
                 } else {
                     RootView()
                         .environmentObject(auth)
+                        .environmentObject(appLock)
                         .tint(.brandTeal)
                         .transition(.opacity)
+                }
+
+                // App-lock cover — only over an authenticated session.
+                if auth.isAuthenticated && appLock.isLocked && !serverMonitor.isDown {
+                    LockView()
+                        .environmentObject(appLock)
+                        .transition(.opacity)
+                        .zIndex(2)
                 }
 
                 if showSplash {
@@ -92,10 +103,21 @@ struct DealioBuilderApp: App {
                         withAnimation(.easeInOut(duration: 0.4)) { showSplash = false }
                     }
                     .transition(.opacity)
-                    .zIndex(1)
+                    .zIndex(3)
                 }
             }
             .animation(.easeInOut(duration: 0.3), value: serverMonitor.isDown)
+            .animation(.easeInOut(duration: 0.25), value: appLock.isLocked)
+            // Lock on cold launch…
+            .task {
+                if auth.isAuthenticated { appLock.lockIfEnabled() }
+            }
+            // …and whenever the app is sent to the background.
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .background, auth.isAuthenticated {
+                    appLock.lockIfEnabled()
+                }
+            }
         }
     }
 }

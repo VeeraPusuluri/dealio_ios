@@ -19,37 +19,55 @@ final class BuilderMeetingsModel: ObservableObject {
 struct BuilderMeetingsView: View {
     @EnvironmentObject private var auth: AuthStore
     @StateObject private var model = BuilderMeetingsModel()
+    @State private var mode: MeetingViewMode = .list
+
+    private var calMeetings: [CalMeeting] {
+        model.meetings.compactMap { m in
+            CalMeeting(id: "\(m.id)", dateString: m.confirmedDate ?? m.preferredDate,
+                       time: m.confirmedTime ?? m.preferredTime, title: m.customerName ?? "Visitor",
+                       subtitle: m.meetingType, status: m.status, color: statusColor(m.status))
+        }
+    }
 
     var body: some View {
-        Group {
-            if model.loading {
-                ProgressView()
-            } else if let error = model.error {
-                ErrorBanner(message: error).padding()
-            } else if model.meetings.isEmpty {
-                ContentUnavailableView("No site visits", systemImage: "calendar",
-                    description: Text("Customer visit requests will appear here."))
-            } else {
-                List(model.meetings) { meeting in
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(meeting.customerName ?? "Visitor").font(.headline)
-                            Spacer()
-                            StatusBadge(text: meeting.status ?? "Pending", color: statusColor(meeting.status))
+        VStack(spacing: 0) {
+            Picker("", selection: $mode) {
+                ForEach(MeetingViewMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented).padding(.horizontal).padding(.top, 8).padding(.bottom, 4)
+
+            Group {
+                if model.loading {
+                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = model.error {
+                    ErrorBanner(message: error).padding()
+                } else if mode == .calendar {
+                    MeetingCalendarView(meetings: calMeetings)
+                } else if model.meetings.isEmpty {
+                    ContentUnavailableView("No site visits", systemImage: "calendar",
+                        description: Text("Customer visit requests will appear here."))
+                } else {
+                    List(model.meetings) { meeting in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(meeting.customerName ?? "Visitor").font(.headline)
+                                Spacer()
+                                StatusBadge(text: meeting.status ?? "Pending", color: statusColor(meeting.status))
+                            }
+                            if let type = meeting.meetingType {
+                                Label(type, systemImage: "mappin.and.ellipse").font(.caption).foregroundStyle(.secondary)
+                            }
+                            if !meeting.whenText.isEmpty {
+                                Label(meeting.whenText, systemImage: "clock").font(.caption).foregroundStyle(.secondary)
+                            }
+                            if let phone = meeting.customerPhone, !phone.isEmpty {
+                                Label(phone, systemImage: "phone").font(.caption).foregroundStyle(.secondary)
+                            }
                         }
-                        if let type = meeting.meetingType {
-                            Label(type, systemImage: "mappin.and.ellipse").font(.caption).foregroundStyle(.secondary)
-                        }
-                        if !meeting.whenText.isEmpty {
-                            Label(meeting.whenText, systemImage: "clock").font(.caption).foregroundStyle(.secondary)
-                        }
-                        if let phone = meeting.customerPhone, !phone.isEmpty {
-                            Label(phone, systemImage: "phone").font(.caption).foregroundStyle(.secondary)
-                        }
+                        .padding(.vertical, 4)
                     }
-                    .padding(.vertical, 4)
+                    .listStyle(.insetGrouped)
                 }
-                .listStyle(.insetGrouped)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

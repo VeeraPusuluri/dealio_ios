@@ -1,21 +1,27 @@
 import SwiftUI
 
+/// The builder app shell — native `TabView` under a shared floating pill nav
+/// (`FloatingTabBar`) with tap bounce.
 struct MainTabView: View {
     @State private var selection = 0
 
+    private let items: [FloatingTabItem] = [
+        .init(icon: "square.grid.2x2", label: "Overview"),
+        .init(icon: "building.2", label: "Projects"),
+        .init(icon: "person.2", label: "Leads"),
+        .init(icon: "doc.text", label: "Deals"),
+        .init(icon: "ellipsis.circle", label: "More"),
+    ]
+
     var body: some View {
-        TabView(selection: $selection) {
-            OverviewView(selection: $selection)
-                .tabItem { Label("Overview", systemImage: "square.grid.2x2") }.tag(0)
-            ProjectsView()
-                .tabItem { Label("Projects", systemImage: "building.2") }.tag(1)
-            LeadsView()
-                .tabItem { Label("Leads", systemImage: "person.2") }.tag(2)
-            DealsView()
-                .tabItem { Label("Deals", systemImage: "doc.text") }.tag(3)
-            BuilderMoreView()
-                .tabItem { Label("More", systemImage: "ellipsis.circle") }.tag(4)
+        FloatingTabShell(items: items, selection: $selection) {
+            TabView(selection: $selection) {
+                OverviewView(selection: $selection).tag(0).modifier(FloatingTabBarPage())
+                ProjectsView().tag(1).modifier(FloatingTabBarPage())
+                LeadsView().tag(2).modifier(FloatingTabBarPage())
+                DealsView().tag(3).modifier(FloatingTabBarPage())
+                BuilderMoreView().tag(4).modifier(FloatingTabBarPage())
+            }
         }
-        .tint(.brandTeal)
     }
 }
