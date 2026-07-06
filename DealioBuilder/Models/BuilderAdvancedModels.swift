@@ -55,4 +55,31 @@ struct ProjectDocument: Codable, Identifiable {
     let createdAt: String?
 
     var fileURL: URL? { AppConfig.resolveAssetURL(url) }
+
+    // The documents endpoint responds with `fileName`/`fileUrl`/`uploadedAt`
+    // (not `name`/`url`/`createdAt`) — accept both shapes.
+    private enum CodingKeys: String, CodingKey {
+        case id, name, url, docType, createdAt, fileName, fileUrl, uploadedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        name = try c.decodeIfPresent(String.self, forKey: .name)
+            ?? c.decodeIfPresent(String.self, forKey: .fileName)
+        url = try c.decodeIfPresent(String.self, forKey: .url)
+            ?? c.decodeIfPresent(String.self, forKey: .fileUrl)
+        docType = try c.decodeIfPresent(String.self, forKey: .docType)
+        createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt)
+            ?? c.decodeIfPresent(String.self, forKey: .uploadedAt)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encodeIfPresent(name, forKey: .name)
+        try c.encodeIfPresent(url, forKey: .url)
+        try c.encodeIfPresent(docType, forKey: .docType)
+        try c.encodeIfPresent(createdAt, forKey: .createdAt)
+    }
 }

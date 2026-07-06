@@ -20,27 +20,40 @@ final class ProjectDetailModel: ObservableObject {
 
     private func isImage(_ d: ProjectDocument) -> Bool {
         let u = (d.url ?? "").lowercased()
-        return u.hasSuffix(".jpg") || u.hasSuffix(".jpeg") || u.hasSuffix(".png") || u.hasSuffix(".webp")
+        if [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"].contains(where: u.hasSuffix) { return true }
+        // Uploads without a recognizable extension: trust the document type,
+        // mirroring the website's gallery filter.
+        let t = (d.docType ?? "").lowercased()
+        return t.contains("image") || t.contains("photo")
+    }
+    private func isTowerPlan(_ d: ProjectDocument) -> Bool {
+        let t = (d.docType ?? "").lowercased()
+        return t.contains("tower") && t.contains("plan")
     }
     private func isFloorPlan(_ d: ProjectDocument) -> Bool {
         let t = (d.docType ?? "").lowercased()
-        return t.contains("floor") || t.contains("plan") || t.contains("layout")
+        return (t.contains("floor") || t.contains("layout")) && !isTowerPlan(d)
     }
 
     var galleryURLs: [URL] {
         var urls: [URL] = []
         if let cover = project.imageURL { urls.append(cover) }
-        for d in documents where isImage(d) && !isFloorPlan(d) {
+        for d in documents where isImage(d) && !isFloorPlan(d) && !isTowerPlan(d) {
             if let u = d.fileURL, !urls.contains(u) { urls.append(u) }
         }
         return urls
     }
     var floorPlans: [ProjectDocument] { documents.filter { isFloorPlan($0) && isImage($0) } }
+    var towerPlans: [ProjectDocument] { documents.filter { isTowerPlan($0) && isImage($0) } }
 }
 
 struct CustomerProjectDetailView: View {
+    @EnvironmentObject private var auth: AuthStore
     @StateObject private var model: ProjectDetailModel
     @State private var showBooking = false
+    @State private var showLoanApply = false
+    @State private var galleryPage: Int? = 0
+    @State private var selectedTowerIdx = 0
 
     init(project: Project) { _model = StateObject(wrappedValue: ProjectDetailModel(project: project)) }
 
@@ -59,7 +72,9 @@ struct CustomerProjectDetailView: View {
                         if let desc = p.description, !desc.isEmpty { descriptionSection(desc) }
                         if let configs = p.configurations, !configs.isEmpty { section("Configurations") { configurationsGrid(configs) } }
                         if let amenities = p.amenities, !amenities.isEmpty { section("Amenities") { amenitiesGrid(amenities) } }
-                        if !model.floorPlans.isEmpty { section("Floor Plans") { floorPlansRow } }
+                        section("Floor Plans") { floorPlansSection }
+                        section("Tower Plans") { towerPlansSection }
+                        section("Virtual Tour") { virtualTourSection }
                         if let nearby = p.nearbyHighlights, !nearby.isEmpty { section("Nearby Highlights") { nearbyList(nearby) } }
                         if let locAdv = p.locationAdvantages, !locAdv.isEmpty { locationAdvantagesSection(locAdv) }
                         section("Home Loan Calculator") { LoanCalculator(price: p.priceMin ?? p.priceMax ?? 50_00_000) }
@@ -79,7 +94,13 @@ struct CustomerProjectDetailView: View {
             // Sticky bottom CTA bar
             bottomBar
         }
-        .sheet(isPresented: $showBooking) { BookingSheetView(projectName: p.name) }
+        .sheet(isPresented: $showBooking) {
+            BookingSheetView(project: p, customerName: auth.user?.fullName ?? "Customer", customerPhone: auth.phone)
+        }
+        .sheet(isPresented: $showLoanApply) {
+            LoanApplySheetView(project: p, customerName: auth.user?.fullName ?? "Customer",
+                               customerPhone: auth.phone, customerEmail: auth.user?.email)
+        }
     }
 
     // MARK: - Gallery
@@ -96,27 +117,41 @@ struct CustomerProjectDetailView: View {
                 }
                 .frame(maxWidth: .infinity).frame(height: 280).clipped()
             } else {
-                // Peeking horizontal scroll row — the next image peeks in at the edge,
-                // mirroring the website's continuous horizontal gallery.
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(Array(urls.enumerated()), id: \.offset) { _, url in
-                            AsyncImage(url: url) { phase in
-                                if let img = phase.image { img.resizable().scaledToFill() }
-                                else { LinearGradient(colors: [.dealioNavyMid, .brandTeal], startPoint: .topLeading, endPoint: .bottomTrailing) }
+                // Peeking horizontal scroll row with pagination dots below —
+                // mirroring the website's horizontal gallery carousel.
+                VStack(spacing: 10) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(Array(urls.enumerated()), id: \.offset) { index, url in
+                                AsyncImage(url: url) { phase in
+                                    if let img = phase.image { img.resizable().scaledToFill() }
+                                    else { LinearGradient(colors: [.dealioNavyMid, .brandTeal], startPoint: .topLeading, endPoint: .bottomTrailing) }
+                                }
+                                .frame(height: 260)
+                                .containerRelativeFrame(.horizontal) { length, _ in length - 40 }
+                                .clipped()
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .id(index)
                             }
-                            .frame(height: 260)
-                            .containerRelativeFrame(.horizontal) { length, _ in length - 40 }
-                            .clipped()
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .scrollTargetLayout()
+                        .padding(.horizontal, 16)
+                    }
+                    .frame(height: 260)
+                    .scrollTargetBehavior(.viewAligned)
+                    .scrollPosition(id: $galleryPage)
+
+                    // Dots below the images showing the current image
+                    HStack(spacing: 8) {
+                        ForEach(urls.indices, id: \.self) { i in
+                            Capsule()
+                                .fill(i == (galleryPage ?? 0) ? Color.brandTeal : Color(.systemGray4))
+                                .frame(width: i == (galleryPage ?? 0) ? 20 : 8, height: 8)
+                                .animation(.easeInOut(duration: 0.25), value: galleryPage)
                         }
                     }
-                    .scrollTargetLayout()
-                    .padding(.horizontal, 16)
                 }
-                .frame(height: 260)
                 .padding(.top, 8)
-                .scrollTargetBehavior(.viewAligned)
             }
         }
     }
@@ -318,23 +353,150 @@ struct CustomerProjectDetailView: View {
 
     // MARK: - Floor plans
 
-    private var floorPlansRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                ForEach(model.floorPlans) { doc in
-                    if let url = doc.fileURL {
-                        Link(destination: url) {
-                            AsyncImage(url: url) { phase in
-                                if let img = phase.image { img.resizable().scaledToFill() }
-                                else { Color(.tertiarySystemFill) }
+    /// "Floor Plan - 3 BHK - East" → "3 BHK · East"; plain "Floor Plan" → "General".
+    private func planLabel(_ d: ProjectDocument) -> String {
+        var rest = (d.docType ?? "").replacingOccurrences(of: "floor plan", with: "", options: .caseInsensitive)
+        rest = rest.trimmingCharacters(in: CharacterSet(charactersIn: " -–·"))
+        if rest.isEmpty { return d.name ?? "General" }
+        return rest.replacingOccurrences(of: " - ", with: " · ")
+    }
+
+    private func planNotProvided(icon: String, _ message: String) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 28)).foregroundStyle(.secondary)
+            Text(message)
+                .font(.footnote).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity).padding(.vertical, 36).padding(.horizontal, 20)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color(.systemGray4), style: StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        )
+    }
+
+    private var floorPlansSection: some View {
+        Group {
+            if model.floorPlans.isEmpty {
+                planNotProvided(icon: "square.grid.2x2", "Floor plans not provided by the builder yet. You can request them during a site visit.")
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(model.floorPlans) { doc in
+                            if let url = doc.fileURL {
+                                Link(destination: url) {
+                                    AsyncImage(url: url) { phase in
+                                        if let img = phase.image { img.resizable().scaledToFill() }
+                                        else { Color(.tertiarySystemFill) }
+                                    }
+                                    .frame(width: 200, height: 150).clipped()
+                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                    .overlay(alignment: .bottomLeading) {
+                                        Text(planLabel(doc))
+                                            .font(.caption2.weight(.semibold)).foregroundStyle(.white)
+                                            .padding(6).background(.black.opacity(0.4), in: Capsule()).padding(8)
+                                    }
+                                }
                             }
-                            .frame(width: 200, height: 150).clipped()
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            .overlay(alignment: .bottomLeading) {
-                                Text(doc.name ?? "Floor plan")
-                                    .font(.caption2.weight(.semibold)).foregroundStyle(.white)
-                                    .padding(6).background(.black.opacity(0.4), in: Capsule()).padding(8)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Tower plans
+
+    private var towerCount: Int { max(p.towers ?? model.towerPlans.count, 1) }
+
+    /// The plan uploaded for a specific tower ("Tower Plan - {n}") — strict match
+    /// first, then a digit-boundary fallback; never another tower's plan.
+    private func towerPlan(_ idx: Int) -> ProjectDocument? {
+        model.towerPlans.first { ($0.docType ?? "") == "Tower Plan - \(idx + 1)" }
+        ?? model.towerPlans.first {
+            ($0.docType ?? "").range(of: "(^|[^0-9])\(idx + 1)([^0-9]|$)", options: .regularExpression) != nil
+        }
+    }
+
+    private var towerPlansSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(0..<towerCount, id: \.self) { i in
+                        let isSelected = selectedTowerIdx == i
+                        Button { selectedTowerIdx = i } label: {
+                            HStack(spacing: 6) {
+                                Text("Tower \(i + 1)")
+                                    .font(.footnote.weight(isSelected ? .bold : .medium))
+                                Circle()
+                                    .fill(towerPlan(i) != nil ? Color.brandTeal : Color(.systemGray4))
+                                    .frame(width: 6, height: 6)
                             }
+                            .padding(.horizontal, 14).padding(.vertical, 8)
+                            .background(isSelected ? Color.brandTeal.opacity(0.15) : Color(.tertiarySystemFill), in: Capsule())
+                            .overlay(Capsule().strokeBorder(isSelected ? Color.brandTeal : .clear, lineWidth: 1.5))
+                            .foregroundStyle(isSelected ? Color.brandTeal : .primary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            if let doc = towerPlan(selectedTowerIdx), let url = doc.fileURL {
+                Link(destination: url) {
+                    AsyncImage(url: url) { phase in
+                        if let img = phase.image { img.resizable().scaledToFit() }
+                        else { Color(.tertiarySystemFill).frame(height: 220) }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+            } else {
+                planNotProvided(icon: "building.2", "Tower \(selectedTowerIdx + 1) plan not provided by the builder yet.")
+            }
+        }
+    }
+
+    // MARK: - Virtual tour
+
+    private struct TourLink: Decodable { let label: String; let url: String }
+
+    /// `videoUrl` is either a plain URL or a JSON array of `{label, url}` —
+    /// the same format the website's tour section parses.
+    private var tours: [(label: String, url: URL)] {
+        guard let raw = p.videoUrl, !raw.isEmpty else { return [] }
+        if let data = raw.data(using: .utf8),
+           let parsed = try? JSONDecoder().decode([TourLink].self, from: data) {
+            return parsed.compactMap { t in URL(string: t.url).map { (t.label.isEmpty ? "Project Tour" : t.label, $0) } }
+        }
+        return URL(string: raw).map { [("Project Tour", $0)] } ?? []
+    }
+
+    private var virtualTourSection: some View {
+        Group {
+            if tours.isEmpty {
+                planNotProvided(icon: "video", "Virtual tour not provided by the builder yet.")
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(Array(tours.enumerated()), id: \.offset) { _, tour in
+                        Link(destination: tour.url) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "play.circle.fill")
+                                    .font(.system(size: 34)).foregroundStyle(.white)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(tour.label)
+                                        .font(.subheadline.weight(.bold)).foregroundStyle(.white)
+                                    Text("Watch the project walkthrough")
+                                        .font(.caption).foregroundStyle(.white.opacity(0.75))
+                                }
+                                Spacer()
+                                Image(systemName: "arrow.up.right")
+                                    .font(.footnote.weight(.semibold)).foregroundStyle(.white.opacity(0.8))
+                            }
+                            .padding(16)
+                            .background(LinearGradient.brand, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                         }
                     }
                 }
@@ -491,8 +653,7 @@ struct CustomerProjectDetailView: View {
 
     private var bottomBar: some View {
         HStack(spacing: 12) {
-            Button {
-            } label: {
+            Button { showLoanApply = true } label: {
                 Text("Apply for Loan")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity).padding(.vertical, 15)
@@ -558,42 +719,277 @@ struct CustomerProjectDetailView: View {
 
 // MARK: - Booking sheet
 
+/// Books a real site visit via `POST /portal/customer/meetings` — the same
+/// endpoint and payload the website and Android app use.
 private struct BookingSheetView: View {
-    let projectName: String
+    let project: Project
+    let customerName: String
+    let customerPhone: String
     @Environment(\.dismiss) private var dismiss
+
+    private static let timeSlots = ["10:00 AM", "11:00 AM", "12:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"]
+    private static let visitTypes = ["Site Visit", "Virtual Tour", "Office Meeting"]
+
+    @State private var date = Date()
+    @State private var time = "10:00 AM"
+    @State private var visitType = "Site Visit"
+    @State private var notes = ""
+    @State private var submitting = false
     @State private var requested = false
+    @State private var errorMessage: String?
+
+    private struct BookMeetingRequest: Encodable {
+        let builderId: Int
+        let projectId: Int
+        let customerName: String
+        let customerPhone: String
+        let preferredDate: String
+        let preferredTime: String
+        let meetingType: String
+        let notes: String?
+    }
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                VStack(spacing: 8) {
-                    Image(systemName: "calendar.badge.plus")
-                        .font(.system(size: 48)).foregroundStyle(.brandTeal)
-                    Text("Book a Site Visit").font(.title2.weight(.bold))
-                    Text(projectName).font(.subheadline).foregroundStyle(.secondary)
+            Form {
+                Section {
+                    VStack(spacing: 8) {
+                        Image(systemName: "calendar.badge.plus")
+                            .font(.system(size: 40)).foregroundStyle(.brandTeal)
+                        Text("Book a Site Visit").font(.title3.weight(.bold))
+                        Text(project.name).font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .listRowBackground(Color.clear)
                 }
-                .padding(.top, 24)
-                Spacer()
-                Button {
-                    withAnimation(.snappy) { requested = true }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { dismiss() }
-                } label: {
-                    Label(requested ? "Visit Requested!" : "Request a Site Visit",
-                          systemImage: requested ? "checkmark.circle.fill" : "calendar")
+                Section("When") {
+                    DatePicker("Date", selection: $date, in: Date()..., displayedComponents: .date)
+                    Picker("Time", selection: $time) {
+                        ForEach(Self.timeSlots, id: \.self) { Text($0) }
+                    }
+                }
+                Section("Visit type") {
+                    Picker("Type", selection: $visitType) {
+                        ForEach(Self.visitTypes, id: \.self) { Text($0) }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                Section("Notes (optional)") {
+                    TextField("Anything the builder should know?", text: $notes, axis: .vertical)
+                        .lineLimit(2...4)
+                }
+                if let errorMessage {
+                    Section {
+                        Text(errorMessage).font(.footnote).foregroundStyle(.red)
+                    }
+                }
+                Section {
+                    Button {
+                        Task { await submit() }
+                    } label: {
+                        HStack {
+                            if submitting { ProgressView().tint(.white) }
+                            Label(requested ? "Visit Requested!" : "Request a Site Visit",
+                                  systemImage: requested ? "checkmark.circle.fill" : "calendar")
+                        }
                         .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 16)
                         .background(requested ? AnyShapeStyle(Color.green) : AnyShapeStyle(LinearGradient.brand),
                                     in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .foregroundStyle(.white)
+                    }
+                    .disabled(submitting || requested)
+                    .buttonStyle(.plain)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+                    if requested {
+                        Text("Our team will reach out shortly to confirm your visit.")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .listRowBackground(Color.clear)
+                    }
                 }
-                .disabled(requested).padding(.horizontal)
-                if requested {
-                    Text("Our team will reach out shortly to confirm your visit.")
-                        .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                }
-                Spacer()
             }
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
+    }
+
+    private func submit() async {
+        guard let builderId = project.builderId else {
+            errorMessage = "This project can't take bookings right now — builder details are unavailable."
+            return
+        }
+        guard !customerPhone.isEmpty else {
+            errorMessage = "Your profile has no phone number — please sign in again."
+            return
+        }
+        submitting = true
+        errorMessage = nil
+        let fmt = DateFormatter()
+        fmt.locale = Locale(identifier: "en_US_POSIX")
+        fmt.dateFormat = "yyyy-MM-dd"
+        do {
+            let _: EmptyResponse = try await APIClient.shared.post(
+                "/portal/customer/meetings",
+                body: BookMeetingRequest(
+                    builderId: builderId, projectId: project.id,
+                    customerName: customerName, customerPhone: customerPhone,
+                    preferredDate: fmt.string(from: date), preferredTime: time,
+                    meetingType: visitType,
+                    notes: notes.isEmpty ? nil : notes
+                )
+            )
+            withAnimation(.snappy) { requested = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { dismiss() }
+        } catch {
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+        submitting = false
+    }
+}
+
+// MARK: - Loan application sheet
+
+/// Submits a real home-loan application via `POST /portal/customer/applications`,
+/// mirroring the Android LoanApplyScreen.
+private struct LoanApplySheetView: View {
+    let project: Project
+    let customerName: String
+    let customerPhone: String
+    let customerEmail: String?
+    @Environment(\.dismiss) private var dismiss
+
+    private static let employmentTypes = ["Salaried", "Self-employed", "Business", "Professional"]
+    private static let tenureOptions = [10, 15, 20, 25, 30]
+
+    @State private var loanAmount = ""
+    @State private var propertyValue = ""
+    @State private var employment = "Salaried"
+    @State private var tenureYears = 20
+    @State private var submitting = false
+    @State private var done = false
+    @State private var errorMessage: String?
+
+    private struct LoanApplicationRequest: Encodable {
+        let builderId: Int?
+        let projectId: Int?
+        let customerName: String
+        let customerPhone: String
+        let customerEmail: String?
+        let loanAmount: Double
+        let propertyValue: Double
+        let employmentType: String
+        let tenureMonths: Int
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    VStack(spacing: 8) {
+                        Image(systemName: "building.columns")
+                            .font(.system(size: 40)).foregroundStyle(.brandTeal)
+                        Text("Apply for Home Loan").font(.title3.weight(.bold))
+                        Text("A loan officer will reach out with the best offers for \(project.name).")
+                            .font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .listRowBackground(Color.clear)
+                }
+                Section("Loan amount required") {
+                    TextField("50,00,000", text: $loanAmount)
+                        .keyboardType(.numberPad)
+                    if let amt = Double(loanAmount), amt > 0 {
+                        Text(Money.inr(amt)).font(.caption.weight(.semibold)).foregroundStyle(.brandTeal)
+                    }
+                }
+                Section("Property value") {
+                    TextField("65,00,000", text: $propertyValue)
+                        .keyboardType(.numberPad)
+                    if let pv = Double(propertyValue), pv > 0 {
+                        Text(Money.inr(pv)).font(.caption.weight(.semibold)).foregroundStyle(.brandTeal)
+                    }
+                }
+                Section("Employment type") {
+                    Picker("Employment", selection: $employment) {
+                        ForEach(Self.employmentTypes, id: \.self) { Text($0) }
+                    }
+                }
+                Section("Tenure") {
+                    Picker("Tenure", selection: $tenureYears) {
+                        ForEach(Self.tenureOptions, id: \.self) { Text("\($0) yrs").tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                if let errorMessage {
+                    Section {
+                        Text(errorMessage).font(.footnote).foregroundStyle(.red)
+                    }
+                }
+                Section {
+                    Button {
+                        Task { await submit() }
+                    } label: {
+                        HStack {
+                            if submitting { ProgressView().tint(.white) }
+                            Label(done ? "Application Submitted!" : "Submit Application",
+                                  systemImage: done ? "checkmark.circle.fill" : "paperplane.fill")
+                        }
+                        .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 16)
+                        .background(done ? AnyShapeStyle(Color.green) : AnyShapeStyle(LinearGradient.brand),
+                                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .foregroundStyle(.white)
+                    }
+                    .disabled(submitting || done || Double(loanAmount) == nil)
+                    .buttonStyle(.plain)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+                    if done {
+                        Text("A loan officer will reach out shortly.")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .listRowBackground(Color.clear)
+                    }
+                }
+            }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+            .onAppear {
+                if propertyValue.isEmpty, let price = project.priceMin ?? project.priceMax {
+                    propertyValue = String(Int(price))
+                }
+            }
+        }
+    }
+
+    private func submit() async {
+        guard let amount = Double(loanAmount), amount > 0 else {
+            errorMessage = "Enter the loan amount you need."
+            return
+        }
+        guard !customerPhone.isEmpty else {
+            errorMessage = "Your profile has no phone number — please sign in again."
+            return
+        }
+        submitting = true
+        errorMessage = nil
+        do {
+            let _: EmptyResponse = try await APIClient.shared.post(
+                "/portal/customer/applications",
+                body: LoanApplicationRequest(
+                    builderId: project.builderId, projectId: project.id,
+                    customerName: customerName, customerPhone: customerPhone,
+                    customerEmail: customerEmail,
+                    loanAmount: amount,
+                    propertyValue: Double(propertyValue) ?? amount,
+                    employmentType: employment,
+                    tenureMonths: tenureYears * 12
+                )
+            )
+            withAnimation(.snappy) { done = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { dismiss() }
+        } catch {
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+        submitting = false
     }
 }
 
