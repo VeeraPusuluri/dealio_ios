@@ -95,7 +95,13 @@ struct CustomerProjectDetailView: View {
             bottomBar
         }
         .sheet(isPresented: $showBooking) {
-            BookingSheetView(project: p, customerName: auth.user?.fullName ?? "Customer", customerPhone: auth.phone)
+            BookingSheetView(
+                project: p,
+                customerName: auth.user?.fullName ?? "Customer",
+                customerPhone: auth.phone,
+                isCP: auth.role == "CP",
+                cpUserId: auth.role == "CP" ? auth.user?.id : nil
+            )
         }
         .sheet(isPresented: $showLoanApply) {
             LoanApplySheetView(project: p, customerName: auth.user?.fullName ?? "Customer",
@@ -725,6 +731,10 @@ private struct BookingSheetView: View {
     let project: Project
     let customerName: String
     let customerPhone: String
+    /// When a channel partner books, they enter the customer's details and the
+    /// meeting is attributed to them via `cpUserId`.
+    var isCP: Bool = false
+    var cpUserId: Int? = nil
     @Environment(\.dismiss) private var dismiss
 
     private static let timeSlots = ["10:00 AM", "11:00 AM", "12:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"]
@@ -737,6 +747,13 @@ private struct BookingSheetView: View {
     @State private var submitting = false
     @State private var requested = false
     @State private var errorMessage: String?
+    // CP-entered customer (ignored when the customer books for themselves).
+    @State private var cpCustomerName = ""
+    @State private var cpCustomerPhone = ""
+
+    private var effectiveName: String { isCP ? cpCustomerName.trimmingCharacters(in: .whitespaces) : customerName }
+    private var effectivePhone: String { isCP ? cpCustomerPhone.trimmingCharacters(in: .whitespaces) : customerPhone }
+    private var customerReady: Bool { !isCP || (!effectiveName.isEmpty && effectivePhone.count >= 6) }
 
     private struct BookMeetingRequest: Encodable {
         let builderId: Int
@@ -747,6 +764,7 @@ private struct BookingSheetView: View {
         let preferredTime: String
         let meetingType: String
         let notes: String?
+        let cpUserId: Int?
     }
 
     var body: some View {
@@ -756,11 +774,20 @@ private struct BookingSheetView: View {
                     VStack(spacing: 8) {
                         Image(systemName: "calendar.badge.plus")
                             .font(.system(size: 40)).foregroundStyle(.brandTeal)
-                        Text("Book a Site Visit").font(.title3.weight(.bold))
+                        Text(isCP ? "Book a Visit for a Customer" : "Book a Site Visit").font(.title3.weight(.bold))
                         Text(project.name).font(.subheadline).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
                     .listRowBackground(Color.clear)
+                }
+                if isCP {
+                    Section("Customer") {
+                        TextField("Customer name", text: $cpCustomerName)
+                            .textContentType(.name)
+                        TextField("Customer phone", text: $cpCustomerPhone)
+                            .keyboardType(.phonePad)
+                            .textContentType(.telephoneNumber)
+                    }
                 }
                 Section("When") {
                     DatePicker("Date", selection: $date, in: Date()..., displayedComponents: .date)
@@ -797,7 +824,7 @@ private struct BookingSheetView: View {
                                     in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .foregroundStyle(.white)
                     }
-                    .disabled(submitting || requested)
+                    .disabled(submitting || requested || !customerReady)
                     .buttonStyle(.plain)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
@@ -818,8 +845,10 @@ private struct BookingSheetView: View {
             errorMessage = "This project can't take bookings right now — builder details are unavailable."
             return
         }
-        guard !customerPhone.isEmpty else {
-            errorMessage = "Your profile has no phone number — please sign in again."
+        guard !effectiveName.isEmpty, effectivePhone.count >= 6 else {
+            errorMessage = isCP
+                ? "Enter the customer's name and phone number to book on their behalf."
+                : "Your profile has no phone number — please sign in again."
             return
         }
         submitting = true
@@ -832,10 +861,11 @@ private struct BookingSheetView: View {
                 "/portal/customer/meetings",
                 body: BookMeetingRequest(
                     builderId: builderId, projectId: project.id,
-                    customerName: customerName, customerPhone: customerPhone,
+                    customerName: effectiveName, customerPhone: effectivePhone,
                     preferredDate: fmt.string(from: date), preferredTime: time,
                     meetingType: visitType,
-                    notes: notes.isEmpty ? nil : notes
+                    notes: notes.isEmpty ? nil : notes,
+                    cpUserId: cpUserId
                 )
             )
             withAnimation(.snappy) { requested = true }

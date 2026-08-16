@@ -126,4 +126,12 @@ struct CpDealDetail: Codable, Identifiable {
     let commissionAmount: Double?
     let commissionStatus: String?
     let messages: [DealMessage]?
+    // The deal flow reads these: the other parties, whether each side has
+    // agreed, and when the deal last moved.
+    var builderName: String?
+    var cpAgreed: Bool?
+    var customerConfirmed: Bool?
+    var createdAt: String?
+    var updatedAt: String?
+    var events: [DealEvent]?
 }

@@ -29,17 +29,19 @@ struct LoginView: View {
                 otpStep
             }
 
-            Spacer().frame(height: 28)
+            if AppConfig.signupEnabled {
+                Spacer().frame(height: 28)
 
-            HStack(spacing: 2) {
-                Text("New to Dealio?")
-                    .font(.subheadline)
-                    .foregroundColor(.dealioTextSecondary)
-                Button("Create an account", action: onGoToSignup)
-                    .font(.subheadline.weight(.semibold))
-                    .tint(.dealioTeal)
+                HStack(spacing: 2) {
+                    Text("New to Dealio?")
+                        .font(.subheadline)
+                        .foregroundColor(.dealioTextSecondary)
+                    Button("Create an account", action: onGoToSignup)
+                        .font(.subheadline.weight(.semibold))
+                        .tint(.dealioTeal)
+                }
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
         }
         .onReceive(ticker) { _ in
             if resendSecondsLeft > 0 { resendSecondsLeft -= 1 }

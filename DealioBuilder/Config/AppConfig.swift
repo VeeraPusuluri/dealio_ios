@@ -43,4 +43,11 @@ enum AppConfig {
 
     /// Dealio brand teal (#0A7E8C).
     static let brandTealRGB = (red: 0.039, green: 0.494, blue: 0.553)
+
+    /// Self-serve signup. Off for now — accounts are created for people rather
+    /// than by them, so the "Create an account" offer is hidden on the login
+    /// screen. `SignupView` and its `RootView` branch are left intact behind
+    /// this, so restoring the offer is a one-line change. Mirrors
+    /// `SIGNUP_ENABLED` in the web app and the Android app.
+    static let signupEnabled = false
 }

@@ -5,7 +5,6 @@ final class BuilderDealDetailModel: ObservableObject {
     @Published var deal: DealDetail?
     @Published var loading = true
     @Published var error: String?
-    @Published var sending = false
 
     func load(builderId: Int, dealId: Int) async {
         loading = deal == nil
@@ -15,11 +14,16 @@ final class BuilderDealDetailModel: ObservableObject {
         loading = false
     }
 
-    func send(builderId: Int, dealId: Int, text: String) async {
-        sending = true
-        defer { sending = false }
-        _ = try? await APIClient.shared.post("/builder/\(builderId)/deals/\(dealId)/messages",
-                                             body: SendMessageRequest(message: text)) as DealDetail?
+    /// `recipientRole` picks the thread: `cp` | `customer` | `group`.
+    func send(builderId: Int, dealId: Int, text: String, to recipientRole: String) async {
+        do {
+            try await APIClient.shared.call(
+                "/builder/\(builderId)/deals/\(dealId)/messages",
+                body: MessageRequest(message: text, recipientRole: recipientRole)
+            )
+        } catch {
+            self.error = authMessage(error)
+        }
         await load(builderId: builderId, dealId: dealId)
     }
 }
@@ -27,73 +31,66 @@ final class BuilderDealDetailModel: ObservableObject {
 struct BuilderDealDetailView: View {
     let dealId: Int
     let title: String
+
     @EnvironmentObject private var auth: AuthStore
     @StateObject private var model = BuilderDealDetailModel()
-    @State private var draft = ""
+    @State private var route: StageTarget?
 
     var body: some View {
-        VStack(spacing: 0) {
+        Group {
             if model.loading {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error = model.error {
-                ErrorBanner(message: error).padding()
-                Spacer()
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 10) {
-                        let messages = model.deal?.messages ?? []
-                        if messages.isEmpty {
-                            Text("No messages yet. Say hello to your customer!")
-                                .font(.subheadline).foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity).padding(.top, 40)
-                        } else {
-                            ForEach(messages) { m in bubble(m) }
+            } else if let deal = model.deal {
+                DealRoom(
+                    viewer: .builder,
+                    deal: roomData(deal),
+                    onSend: { text, recipient in
+                        if let id = await auth.resolvedBuilderId() {
+                            await model.send(builderId: id, dealId: dealId, text: text, to: recipient)
                         }
-                    }
-                    .padding()
+                    },
+                    onStageAction: { route = $0 }
+                )
+            } else {
+                VStack {
+                    ErrorBanner(message: model.error ?? "Couldn't load this deal.").padding()
+                    Spacer()
                 }
-                composer
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.dealioMist.ignoresSafeArea())
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(item: $route) { target in
+            switch target {
+            case .builderMeetings: BuilderMeetingsView()
+            case .builderShortlists: BuilderShortlistsView()
+            case .builderCommissions: BuilderCommissionsView()
+            default: EmptyView()
+            }
+        }
         .task { if let id = await auth.resolvedBuilderId() { await model.load(builderId: id, dealId: dealId) } }
     }
 
-    private func bubble(_ m: DealMessage) -> some View {
-        let mine = (m.senderRole ?? "").lowercased() == "builder"
-        return HStack {
-            if mine { Spacer(minLength: 40) }
-            VStack(alignment: .leading, spacing: 3) {
-                Text(mine ? "You" : (m.senderRole ?? "").capitalized)
-                    .font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
-                Text(m.message).font(.subheadline)
-            }
-            .padding(10)
-            .background(mine ? Color.brandTeal.opacity(0.15) : Color(.secondarySystemGroupedBackground),
-                        in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            if !mine { Spacer(minLength: 40) }
-        }
+    private func roomData(_ deal: DealDetail) -> DealRoomData {
+        DealRoomData(
+            id: deal.id,
+            status: deal.status,
+            title: deal.customerName ?? title,
+            subtitle: deal.projectName ?? "",
+            builderName: deal.builderName,
+            cpName: deal.cpName,
+            customerName: deal.customerName,
+            cpAgreed: deal.cpAgreed ?? false,
+            customerConfirmed: deal.customerConfirmed ?? false,
+            idleDays: deal.idleDays,
+            messages: deal.messages ?? [],
+            events: deal.events ?? []
+        )
     }
+}
 
-    private var composer: some View {
-        HStack(spacing: 10) {
-            TextField("Type a message…", text: $draft, axis: .vertical)
-                .lineLimit(1...4)
-                .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(Color(.secondarySystemGroupedBackground), in: Capsule())
-            Button {
-                let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !text.isEmpty else { return }
-                draft = ""
-                Task { if let id = await auth.resolvedBuilderId() { await model.send(builderId: id, dealId: dealId, text: text) } }
-            } label: {
-                Image(systemName: "arrow.up.circle.fill").font(.title).foregroundStyle(.brandTeal)
-            }
-            .disabled(model.sending || draft.trimmingCharacters(in: .whitespaces).isEmpty)
-        }
-        .padding(12)
-        .background(.bar)
-    }
+/// Lets a `StageTarget` drive a `navigationDestination(item:)`.
+extension StageTarget: Identifiable {
+    public var id: String { String(describing: self) }
 }

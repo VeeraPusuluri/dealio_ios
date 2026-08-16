@@ -85,6 +85,36 @@ struct SendMessageRequest: Encodable {
     let message: String
 }
 
+/// `recipientRole` picks the thread. From a builder: `cp` | `customer` | `group`;
+/// from a CP: `builder` | `customer` | `group`. Omitting it lands on the
+/// backend's default pair, which is why every send now names it.
+struct MessageRequest: Encodable {
+    let message: String
+    let recipientRole: String
+}
+
+/// A unit a customer has shortlisted, awaiting the builder's answer —
+/// `builder/:id/shortlists`.
+struct UnitShortlist: Codable, Identifiable {
+    let id: Int
+    var unitId: String?
+    var status: String?
+    var builderNote: String?
+    var createdAt: String?
+    var customerName: String?
+    var customerPhone: String?
+    var projectName: String?
+    var projectId: Int?
+
+    var isPending: Bool { (status ?? "Pending").caseInsensitiveCompare("Pending") == .orderedSame }
+}
+
+/// Body for `PATCH builder/:id/shortlists/:id` — `Accepted` or `SuggestOther`.
+struct ShortlistResponseRequest: Encodable {
+    let status: String
+    let builderNote: String?
+}
+
 /// A builder notification — `builder/notifications`.
 struct BuilderNotification: Codable, Identifiable {
     let id: Int
