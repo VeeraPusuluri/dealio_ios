@@ -24,7 +24,9 @@ private struct ScoredLead: Identifiable {
 
 private func score(_ lead: CpLead) -> ScoredLead {
     let base = statusScore[lead.status ?? ""] ?? 20
-    let days = daysSince(lead.createdAt)
+    // An undated lead gets no decay rather than a full-score one: we don't know
+    // that it is fresh, and penalising it would be inventing a fact.
+    let days = daysSince(lead.createdAt) ?? 0
     let decay = min(Double(days) * 0.5, 20)
     let s = max(5, Int((Double(base) - decay).rounded()))
     let label = s >= 70 ? "Hot" : s >= 45 ? "Warm" : "Cold"

@@ -17,12 +17,69 @@ final class APIClient {
 
     private struct Empty: Encodable {}
 
+    /// The envelope reduced to what a write needs: did it work, and if not, why.
+    private struct Acknowledgement: Decodable {
+        let ok: Bool?
+        let message: String?
+    }
+
     func get<T: Decodable>(_ path: String, authorized: Bool = true) async throws -> T {
         try await send(path, method: "GET", body: Empty?.none, authorized: authorized)
     }
 
     func post<T: Decodable, B: Encodable>(_ path: String, body: B, authorized: Bool = true) async throws -> T {
         try await send(path, method: "POST", body: body, authorized: authorized)
+    }
+
+    func patch<T: Decodable, B: Encodable>(_ path: String, body: B, authorized: Bool = true) async throws -> T {
+        try await send(path, method: "PATCH", body: body, authorized: authorized)
+    }
+
+    func put<T: Decodable, B: Encodable>(_ path: String, body: B, authorized: Bool = true) async throws -> T {
+        try await send(path, method: "PUT", body: body, authorized: authorized)
+    }
+
+    func delete<T: Decodable>(_ path: String, authorized: Bool = true) async throws -> T {
+        try await send(path, method: "DELETE", body: Empty?.none, authorized: authorized)
+    }
+
+    /// Calls an endpoint whose answer is just "it worked".
+    ///
+    /// Many Dealio writes reply `{ ok: true }` with no `data`, which the typed
+    /// paths above reject as `.invalidResponse`. This checks `ok`, surfaces the
+    /// server's `message` on failure, and discards the payload — so a caller
+    /// that wants an acknowledgement gets a truthful one instead of having to
+    /// swallow a decode error to get past it.
+    @discardableResult
+    func call<B: Encodable>(
+        _ path: String, method: String = "POST", body: B? = Empty?.none, authorized: Bool = true
+    ) async throws -> String? {
+        guard let url = URL(string: AppConfig.apiBaseURL.absoluteString + path) else {
+            throw APIError.invalidURL
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if authorized, let authToken {
+            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+        }
+        if let body { request.httpBody = try JSONEncoder().encode(body) }
+
+        let (data, response) = try await perform(request)
+        guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+        if http.statusCode == 401 { throw APIError.unauthorized }
+
+        let ack = try? JSONDecoder().decode(Acknowledgement.self, from: data)
+        if ack?.ok == false || !(200...299).contains(http.statusCode) {
+            throw APIError.server(ack?.message ?? "Request failed (\(http.statusCode)).")
+        }
+        return ack?.message
+    }
+
+    /// `call` with no body, for `PATCH`/`DELETE` endpoints that take none.
+    @discardableResult
+    func call(_ path: String, method: String, authorized: Bool = true) async throws -> String? {
+        try await call(path, method: method, body: Empty?.none, authorized: authorized)
     }
 
     /// Uploads a single file as `multipart/form-data`, with optional extra text fields

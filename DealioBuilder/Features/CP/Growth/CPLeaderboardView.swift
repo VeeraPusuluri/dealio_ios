@@ -112,10 +112,6 @@ func monthKey(_ date: Date) -> String {
     return f.string(from: date)
 }
 
-/// Whole days between an ISO-ish "yyyy-MM-dd…" string and now (0 if unparseable).
-func daysSince(_ isoDate: String?) -> Int {
-    guard let isoDate else { return 0 }
-    let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX")
-    guard let date = f.date(from: String(isoDate.prefix(10))) else { return 0 }
-    return Calendar.current.dateComponents([.day], from: date, to: Date()).day ?? 0
-}
+// `daysSince` used to live here, returning 0 for an unparseable date — which the
+// move queue can't use, since "unknown" and "touched today" sort differently.
+// The one copy now lives in `Flow/DealFlow.swift` and returns `Int?`.
