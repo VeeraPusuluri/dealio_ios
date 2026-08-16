@@ -29,6 +29,24 @@ final class CPDealDetailModel: ObservableObject {
         await load(cpUserId: cpUserId, dealId: dealId)
     }
 
+    /// Schedules a follow-up against this deal — the CP's move at Meeting Done.
+    func logFollowUp(cpUserId: Int, dealId: Int, due: Date, reason: String) async {
+        do {
+            try await APIClient.shared.call(
+                "/cp/\(cpUserId)/follow-ups",
+                body: CreateFollowUpRequest(
+                    dealId: dealId,
+                    dueDate: MeetingAnswerSheet.dateFormatter.string(from: due),
+                    dueTime: MeetingAnswerSheet.timeFormatter.string(from: due),
+                    reason: reason
+                )
+            )
+        } catch {
+            self.error = authMessage(error)
+        }
+        await load(cpUserId: cpUserId, dealId: dealId)
+    }
+
     /// The CP half of the two-sided agreement at the Agreement stage.
     func agree(cpUserId: Int, dealId: Int) async {
         do {
@@ -47,6 +65,7 @@ struct CPDealDetailView: View {
     @EnvironmentObject private var auth: AuthStore
     @StateObject private var model = CPDealDetailModel()
     @State private var route: StageTarget?
+    @State private var loggingFollowUp = false
 
     private var cpUserId: Int { auth.user?.id ?? 0 }
 
@@ -79,15 +98,23 @@ struct CPDealDetailView: View {
             default: EmptyView()
             }
         }
+        .sheet(isPresented: $loggingFollowUp) {
+            FollowUpFormView(customerName: model.deal?.customerName ?? title) { due, reason in
+                Task { await model.logFollowUp(cpUserId: cpUserId, dealId: dealId, due: due, reason: reason) }
+            }
+        }
         .task { await model.load(cpUserId: cpUserId, dealId: dealId) }
     }
 
-    /// Agreeing happens here rather than elsewhere, so it never leaves the deal.
-    /// Targets this screen doesn't serve fall through to navigation.
+    /// Agreeing and logging a follow-up happen here rather than elsewhere, so
+    /// neither leaves the deal. Targets this screen doesn't serve fall through
+    /// to navigation.
     private func handle(_ target: StageTarget) {
         switch target {
         case .agree:
             Task { await model.agree(cpUserId: cpUserId, dealId: dealId) }
+        case .logFollowUp:
+            loggingFollowUp = true
         default:
             route = target
         }

@@ -41,11 +41,15 @@ final class CPOverviewModel: ObservableObject {
 
 struct CPOverviewView: View {
     @Binding var selection: Int
+    /// Which side the Leads tab should open on when a tile sends you there.
+    @Binding var leadsSide: CpLeadSide
     @EnvironmentObject private var auth: AuthStore
     @StateObject private var model = CPOverviewModel()
     @State private var openDeal: DealRoute?
 
-    private var activeLeads: Int { model.leads.filter { ($0.status ?? "") != "Booked" && ($0.status ?? "") != "Closed" }.count }
+    /// Only rows still on the lead side of the conversion line. Counting deals
+    /// here too is what made this tile and the Deals tile disagree.
+    private var activeLeads: Int { model.leads.filter { isLeadStage($0.status) }.count }
 
     var body: some View {
         NavigationStack {
@@ -122,8 +126,8 @@ struct CPOverviewView: View {
                 StatCard(title: "Pending", value: Money.inr(cp?.pendingCommission), systemImage: "hourglass", tint: .dealioOrange, action: { selection = 3 })
             }
             HStack(spacing: 12) {
-                StatCard(title: "Deals", value: "\(cp?.totalDeals ?? 0)", systemImage: "checkmark.seal", tint: .brandTeal, action: { selection = 1 })
-                StatCard(title: "Active Leads", value: "\(activeLeads)", systemImage: "person.2", tint: .brandTeal, action: { selection = 1 })
+                StatCard(title: "Deals", value: "\(cp?.totalDeals ?? 0)", systemImage: "checkmark.seal", tint: .brandTeal, action: { leadsSide = .deals; selection = 1 })
+                StatCard(title: "Active Leads", value: "\(activeLeads)", systemImage: "person.2", tint: .brandTeal, action: { leadsSide = .leads; selection = 1 })
             }
         }
         .padding(.horizontal)

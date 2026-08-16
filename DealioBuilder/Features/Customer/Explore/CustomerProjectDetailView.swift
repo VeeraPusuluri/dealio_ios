@@ -755,17 +755,9 @@ private struct BookingSheetView: View {
     private var effectivePhone: String { isCP ? cpCustomerPhone.trimmingCharacters(in: .whitespaces) : customerPhone }
     private var customerReady: Bool { !isCP || (!effectiveName.isEmpty && effectivePhone.count >= 6) }
 
-    private struct BookMeetingRequest: Encodable {
-        let builderId: Int
-        let projectId: Int
-        let customerName: String
-        let customerPhone: String
-        let preferredDate: String
-        let preferredTime: String
-        let meetingType: String
-        let notes: String?
-        let cpUserId: Int?
-    }
+    // The booking body lives in Models/CPWriteModels.swift — the CP books site
+    // visits from more than one screen, and two copies of the payload is how the
+    // two drift apart.
 
     var body: some View {
         NavigationStack {
