@@ -19,17 +19,17 @@ iOS side at baseline: 85 Swift files / ~10k lines.
 
 | # | Feature | Android source | iOS status |
 |---|---|---|---|
-| 0.1 | Deal-stage ladder, aliases, buyer phases, buyer headlines | `ui/flow/DealFlow.kt` | ⬜ pending |
-| 0.2 | The **baton** — who owes the next move, per stage | `ui/flow/DealFlow.kt` | ⬜ pending |
-| 0.3 | Lead ÷ deal split at `Negotiation` (`isLeadStage`/`isDealStage`) | `ui/flow/DealFlow.kt` | ⬜ pending |
-| 0.4 | **Deal spine** — phase track + baton card, one per deal screen | `ui/flow/DealSpine.kt` | ⬜ pending |
-| 0.5 | **Party rail** — 4 threads per deal (3 pairs + group), roster per viewer | `ui/flow/PartyRail.kt` | ⬜ pending |
-| 0.6 | **Stage actions** — what each role may do at each stage | `ui/flow/StageActions.kt` | ⬜ pending |
-| 0.7 | **Move queue** — "deals that cannot progress without you", stalled first | `ui/flow/MoveQueue.kt` | ⬜ pending |
-| 0.8 | **Activity ledger** — what happened on this deal, dotted by actor | `ui/flow/ActivityLedger.kt` | ⬜ pending |
-| 0.9 | **Conversation inbox** — one row per *thread* (not per deal), unread counts | `ui/flow/ConversationInbox.kt` | ⬜ pending |
-| 0.10 | Thread summaries + read receipts (`POST /threads/summary`, `/threads/read`) | `data/ThreadRepository.kt` | ⬜ pending |
-| 0.11 | Nudge a stalled deal (`POST /deals/:id/nudge`) | `data/api/ThreadApi.kt` | ⬜ pending |
+| 0.1 | Deal-stage ladder, aliases, buyer phases, buyer headlines | `ui/flow/DealFlow.kt` | ✅ done — `Flow/DealFlow.swift` |
+| 0.2 | The **baton** — who owes the next move, per stage | `ui/flow/DealFlow.kt` | ✅ done — `Flow/DealFlow.swift` |
+| 0.3 | Lead ÷ deal split at `Negotiation` (`isLeadStage`/`isDealStage`) | `ui/flow/DealFlow.kt` | ✅ done — `Flow/DealFlow.swift` |
+| 0.4 | **Deal spine** — phase track + baton card, one per deal screen | `ui/flow/DealSpine.kt` | ✅ done — `Flow/DealSpine.swift` |
+| 0.5 | **Party rail** — 4 threads per deal (3 pairs + group), roster per viewer | `ui/flow/PartyRail.kt` | ✅ done — `Flow/PartyRail.swift` |
+| 0.6 | **Stage actions** — what each role may do at each stage | `ui/flow/StageActions.kt` | ✅ done — `Flow/StageActions.swift` |
+| 0.7 | **Move queue** — "deals that cannot progress without you", stalled first | `ui/flow/MoveQueue.kt` | ✅ done — `Flow/MoveQueue.swift`, on all three homes |
+| 0.8 | **Activity ledger** — what happened on this deal, dotted by actor | `ui/flow/ActivityLedger.kt` | ✅ done — `Flow/ActivityLedger.swift` |
+| 0.9 | **Conversation inbox** — one row per *thread* (not per deal), unread counts | `ui/flow/ConversationInbox.kt` | ✅ done — `Flow/ConversationInbox.swift` |
+| 0.10 | Thread summaries + read receipts (`POST /threads/summary`, `/threads/read`) | `data/ThreadRepository.kt` | ✅ done — `Networking/ThreadService.swift` |
+| 0.11 | Nudge a stalled deal (`POST /deals/:id/nudge`) | `data/api/ThreadApi.kt` | ✅ done — nudge in `Flow/DealRoom.swift` |
 | 0.12 | Portal accent — each role's shell lit in its own colour | `ui/components/PortalAccent.kt` | ⬜ pending |
 | 0.13 | Profile avatar (view full screen / badge to replace / remove) | `ui/components/ProfileAvatar.kt` | ⬜ pending |
 | 0.14 | Avatar endpoints `POST/DELETE /auth/me/avatar` | `data/api/AuthApi.kt` | ⬜ pending |
@@ -46,7 +46,7 @@ iOS side at baseline: 85 Swift files / ~10k lines.
 | # | Feature | Android source | iOS status |
 |---|---|---|---|
 | 1.1 | Phone + OTP sign-in | `ui/screens/LoginScreen.kt` | ✅ done |
-| 1.2 | Role selector pills on sign-in, hero lit in the role's colour | `ui/components/RoleSelector.kt` | ⬜ pending |
+| 1.2 | Role selector pills on sign-in, hero lit in the role's colour | `ui/components/RoleSelector.kt` | 🟡 partial — dial-code picker landed; role pills still pending |
 | 1.3 | Self-serve signup hidden behind a flag | `FeatureFlags.kt` | ✅ done (`AppConfig.signupEnabled`) |
 | 1.4 | Phone lookup before OTP (`POST /auth/phone/lookup`) | `data/api/AuthApi.kt` | ⬜ pending |
 | 1.5 | Firebase phone auth (`POST /auth/firebase`) | `data/FirebasePhoneAuth.kt` | ⬜ pending |
@@ -58,18 +58,18 @@ iOS side at baseline: 85 Swift files / ~10k lines.
 
 | # | Feature | Android source | iOS status |
 |---|---|---|---|
-| 2.1 | Home opens with the move queue, metrics below | `ui/builder/overview/OverviewScreen.kt` | 🟡 partial — metrics only |
+| 2.1 | Home opens with the move queue, metrics below | `ui/builder/overview/OverviewScreen.kt` | 🟡 partial — move queue landed under the numbers |
 | 2.2 | Greeting uses the builder's full name | `ui/builder/overview/OverviewScreen.kt` | 🟡 partial |
 | 2.3 | Projects list | `ui/builder/projects/ProjectsScreen.kt` | ✅ done |
 | 2.4 | Project detail | `ui/builder/projects/ProjectDetailScreen.kt` | 🟡 partial |
 | 2.5 | Project create / edit form + cover-image upload | `ui/builder/projects/ProjectFormScreen.kt` | 🟡 partial — form is a stub |
-| 2.6 | Pipeline cut by who owes the next move | `ui/builder/pipeline/PipelineScreen.kt` | 🟡 partial — flat list |
-| 2.7 | Lead stage moves that actually persist (`PATCH .../leads/:id/stage`) | `ui/builder/pipeline/` | ⬜ pending |
-| 2.8 | Deals list, deal detail with spine + party rail + ledger | `ui/builder/deals/` | 🟡 partial — chat only |
-| 2.9 | Answer a site-visit request (confirm / reschedule / decline) | `ui/builder/meetings/MeetingsScreen.kt` | ⬜ pending |
+| 2.6 | Pipeline cut by who owes the next move | `ui/builder/pipeline/PipelineScreen.kt` | ✅ done — stage **and** baton cuts |
+| 2.7 | Lead stage moves that actually persist (`PATCH .../leads/:id/stage`) | `ui/builder/pipeline/` | ✅ done |
+| 2.8 | Deals list, deal detail with spine + party rail + ledger | `ui/builder/deals/` | ✅ done — shared `DealRoom` |
+| 2.9 | Answer a site-visit request (confirm / reschedule / decline) | `ui/builder/meetings/MeetingsScreen.kt` | ✅ done — `MeetingAnswer.swift` |
 | 2.10 | Unit matrix | `ui/builder/units/UnitMatrixScreen.kt` | ⬜ pending |
 | 2.11 | Commissions + release | `ui/builder/commissions/CommissionsScreen.kt` | 🟡 partial — read-only |
-| 2.12 | Shortlists + respond | `ui/builder/shortlists/ShortlistsScreen.kt` | ⬜ pending |
+| 2.12 | Shortlists + respond | `ui/builder/shortlists/ShortlistsScreen.kt` | ✅ done — `BuilderShortlistsView` |
 | 2.13 | Broadcast | `ui/builder/broadcast/BroadcastScreen.kt` | 🟡 partial |
 | 2.14 | CP performance | `ui/builder/cp/CPPerformanceScreen.kt` | 🟡 partial |
 | 2.15 | Analytics | `ui/builder/analytics/AnalyticsScreen.kt` | 🟡 partial |
@@ -82,23 +82,23 @@ iOS side at baseline: 85 Swift files / ~10k lines.
 | 2.22 | Virtual tours | `ui/builder/virtualtours/VirtualToursScreen.kt` | 🟡 partial |
 | 2.23 | AI assistant | `ui/builder/ai/AiAssistantScreen.kt` | 🟡 partial |
 | 2.24 | Settings, incl. **Edit** the builder's own profile + avatar | `ui/builder/settings/BuilderSettingsScreen.kt` | ⬜ pending |
-| 2.25 | Conversations inbox (per-thread rows, unread badges) | `ui/builder/conversations/` | 🟡 partial — one row per deal |
+| 2.25 | Conversations inbox (per-thread rows, unread badges) | `ui/builder/conversations/` | ✅ done — per-thread rows + unread |
 | 2.26 | Notification centre | `ui/builder/notifications/NotificationsScreen.kt` | 🟡 partial |
 
 ## 3. Channel-partner portal
 
 | # | Feature | Android source | iOS status |
 |---|---|---|---|
-| 3.1 | Home: earnings + counts, move queue below | `ui/cp/overview/CpOverviewScreen.kt` | 🟡 partial |
+| 3.1 | Home: earnings + counts, move queue below | `ui/cp/overview/CpOverviewScreen.kt` | ✅ done — move queue below earnings |
 | 3.2 | Partner credential card — portrait, authorisation, partner ID | `ui/cp/CpCredential.kt`, `ui/cp/overview/CpIdentityDialog.kt` | ⬜ pending |
-| 3.3 | Leads list + create a lead | `ui/cp/leads/LeadsScreen.kt` | 🟡 partial — read-only |
-| 3.4 | Deals tile lands on the Deals side of the pipeline | `ui/cp/overview/` | ⬜ pending |
-| 3.5 | CP deal detail — spine, party rail, buyer *and* builder threads | `ui/cp/leads/CpDealDetailScreen.kt` | 🟡 partial |
-| 3.6 | Conversations inbox + thread screen with pinned composer | `ui/cp/conversations/` | 🟡 partial |
-| 3.7 | Contacts: list, add, edit, delete | `ui/cp/contacts/ContactsScreen.kt` | 🟡 partial — read-only |
+| 3.3 | Leads list + create a lead | `ui/cp/leads/LeadsScreen.kt` | ✅ done — list split + refer a buyer |
+| 3.4 | Deals tile lands on the Deals side of the pipeline | `ui/cp/overview/` | ✅ done |
+| 3.5 | CP deal detail — spine, party rail, buyer *and* builder threads | `ui/cp/leads/CpDealDetailScreen.kt` | ✅ done — shared `DealRoom` |
+| 3.6 | Conversations inbox + thread screen with pinned composer | `ui/cp/conversations/` | 🟡 partial — inbox reworked; dedicated thread screen still pending |
+| 3.7 | Contacts: list, add, edit, delete | `ui/cp/contacts/ContactsScreen.kt` | ✅ done — add / edit / delete + dupe warning |
 | 3.8 | Contact import from the phone book, deduped | `ui/cp/contacts/ContactImport.kt` | ⬜ pending |
-| 3.9 | Full country-code picker | `ui/cp/contacts/CountryCodes.kt` | ⬜ pending |
-| 3.10 | Follow-ups: list, create, mark done | `ui/cp/followups/FollowUpsScreen.kt` | 🟡 partial — read-only |
+| 3.9 | Full country-code picker | `ui/cp/contacts/CountryCodes.kt` | ✅ done — `Shared/CountryCodes.swift` (172 countries) |
+| 3.10 | Follow-ups: list, create, mark done | `ui/cp/followups/FollowUpsScreen.kt` | ✅ done — create + swipe-done |
 | 3.11 | Call logs | `ui/cp/calllogs/CallLogsScreen.kt` | ⬜ pending |
 | 3.12 | Meetings + arrange a site meeting (not just read them) | `ui/cp/meetings/CpMeetingsScreen.kt` | 🟡 partial |
 | 3.13 | Book a site visit straight from a lead | `ui/cp/leads/CpDialogs.kt` | ⬜ pending |
@@ -131,15 +131,15 @@ iOS side at baseline: 85 Swift files / ~10k lines.
 | 4.1 | Explore — cities, search, project cards | `ui/customer/explore/ExploreScreen.kt` | ✅ done |
 | 4.2 | Project detail (1.6k lines: gallery, EMI slider, specs, plans, advantages) | `ui/customer/project/ProjectDetailScreen.kt` | 🟡 partial |
 | 4.3 | EMI slider reaches the top of the price band | `ui/customer/project/` | ⬜ pending |
-| 4.4 | Bookmark on every project + a shelf to keep it on | `ui/customer/saved/SavedScreen.kt` | ⬜ pending — Saved reads *shortlist*, not saved-projects |
-| 4.5 | Saved-projects endpoints (`GET/POST/DELETE /customer/saved-projects`) | `data/api/CustomerApi.kt` | ⬜ pending |
+| 4.4 | Bookmark on every project + a shelf to keep it on | `ui/customer/saved/SavedScreen.kt` | ✅ done — `SavedProjectsStore` |
+| 4.5 | Saved-projects endpoints (`GET/POST/DELETE /customer/saved-projects`) | `data/api/CustomerApi.kt` | ✅ done |
 | 4.6 | Visits list, not clipped above the bottom nav | `ui/customer/visits/VisitsScreen.kt` | 🟡 partial |
 | 4.7 | Open a site visit and see where it is | `ui/customer/visits/VisitsScreen.kt` | ⬜ pending |
 | 4.8 | Don't offer a visit that is already on the books | `ui/customer/project/` | ⬜ pending |
 | 4.9 | Rate a completed visit (`PATCH /portal/customer/meetings/:id/rating`) | `ui/customer/visits/` | ⬜ pending |
 | 4.10 | Booked slots when picking a visit time | `data/api/CustomerApi.kt` | ⬜ pending |
-| 4.11 | Journey — five buyer phases, buyer-safe copy | `ui/customer/journey/JourneyScreen.kt` | 🟡 partial — raw stage shown |
-| 4.12 | Customer deal detail with spine + party rail | `ui/customer/journey/DealDetailScreen.kt` | ⬜ pending |
+| 4.11 | Journey — five buyer phases, buyer-safe copy | `ui/customer/journey/JourneyScreen.kt` | ✅ done — phase track + buyer headline |
+| 4.12 | Customer deal detail with spine + party rail | `ui/customer/journey/DealDetailScreen.kt` | ✅ done — `CustomerDealRoomView` |
 | 4.13 | Accept a negotiation / confirm a deal | `data/api/CustomerApi.kt` | ⬜ pending |
 | 4.14 | Messaging handed off to Conversations, as the CP page does | `ui/customer/conversations/` | 🟡 partial |
 | 4.15 | Profile — set and remove a picture | `ui/customer/profile/ProfileScreen.kt` | ⬜ pending |
@@ -173,7 +173,51 @@ iOS side at baseline: 85 Swift files / ~10k lines.
 5. Meetups end-to-end (3.14–3.18, 4.17–4.18).
 6. The remaining 🟡 screens, deepest-first.
 
+## Notes on the port
+
+This is not a transliteration. Where the Android shape doesn't fit iOS, or where
+the Android code has a defect, the iOS version differs on purpose:
+
+- **One `DealRoom` for three roles.** Android has a separate deal screen per
+  portal; iOS has one, parameterised by `viewer`. The buyer had no deal screen on
+  either platform before this.
+- **`relativeDay` actually formats.** Android's ledger documented "today / 3d"
+  and returned the raw `yyyy-MM-dd`.
+- **`daysSince` returns `Int?`.** "We don't know" no longer sorts as "touched
+  today" in the move queue.
+- **`APIClient.call`** for the many Dealio writes that answer `{ ok: true }` with
+  no `data` — those previously had to be issued as a typed request whose decode
+  error the caller then swallowed.
+- **The stage table is built statement-by-statement**, because Swift type-checks
+  a nested dictionary literal that size exponentially.
+- **The dial-code picker reaches sign-in too**, which on Android it does not: the
+  iOS code field was free text that accepted any five characters.
+- **Payload de-duplication** — `BookMeetingRequest` had a second private copy
+  inside the project page.
+
+## Verified
+
+Every commit builds clean (`xcodebuild … -destination 'iPhone 17'`) and the app
+was installed and launched on the simulator against the live dev backend, signed
+in as a builder, a CP and a customer in turn. Screens confirmed rendering against
+real data: sign-in (dial-code picker), builder Overview (move queue, baton copy,
+staleness), CP Overview (move queue, stalled-first ordering, lead/deal counts),
+customer Explore (bookmarks, saved state restored from the server).
+
+Not confirmed by tapping through: the deal room, the visit-answer sheet, the CRM
+forms and the pipeline's stage moves. macOS refused this session permission to
+send Apple events to the Simulator, so there was no way to drive the UI; those
+are verified by compile and by their models' endpoints only.
+
 ## Changelog
 
 <!-- Newest first. One line per landed commit. -->
-- _(nothing landed yet — baseline recorded)_
+- `4737019` customer: a bookmark on every project, and a shelf that holds them
+- `364c003` cp: refer a buyer, and stop counting one row as both a lead and a deal
+- `f15d1ed` cp: a CRM that can be written to, and the rest of the world in the picker
+- `6aed784` pipeline: cut the same leads by who owes the next move
+- `d0a183a` builder: answer a visit request instead of only reading it
+- `22bc82b` home: open on the deals that cannot move without you
+- `00250fa` deals: one deal room for all three roles, and an inbox per thread
+- `617e882` flow: teach iOS the deal ladder, the baton, and the four threads
+- `cd4b769` parity: write down what the iOS app still owes the Android one
