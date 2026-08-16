@@ -89,7 +89,7 @@ struct CPProfileView: View {
 
                     // Header
                     VStack(spacing: 12) {
-                        InitialsAvatar(name: name, size: 72)
+                        ProfileAvatarView(size: 84, ringColor: Color.dealioCardBorder, badgeColor: .dealioOrange)
                         VStack(spacing: 4) {
                             Text(name).font(.title3.weight(.bold))
                             if let tier = cp?.tier {

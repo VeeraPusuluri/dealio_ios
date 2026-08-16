@@ -94,9 +94,7 @@ struct OverviewView: View {
                         Divider()
                         Button("Sign out", role: .destructive) { auth.logout() }
                     } label: {
-                        Image(systemName: "person.crop.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.brandTeal)
+                        AccountAvatar(size: 30)
                     }
                 }
             }

@@ -13,10 +13,37 @@ private struct BottomRoundedShape: Shape {
 /// Branded shell for the auth screens: a navy gradient hero (teal glow + trust
 /// strip) carrying the Dealio mark and headline, flowing into a floating white
 /// form card that overlaps the hero, with a footer pinned to the bottom.
-struct AuthScaffold<Content: View>: View {
+struct AuthScaffold<Content: View, HeroTrailing: View>: View {
     let headline: String
     let subtitle: String
+    /// Eyebrow above the headline — "Sign in", "Step 2 · Verify".
+    var eyebrow: String? = nil
+    /// The colour the hero glows in. Defaults to the brand teal, which is what
+    /// anything outside the role picker wants.
+    var accentOnDark: Color = .dealioTealBright
+    /// Which of the two steps we're on, for the progress track. 0 hides it.
+    var step: Int = 0
+    /// Sits opposite the logo — the role chip on sign-in.
+    @ViewBuilder var heroTrailing: () -> HeroTrailing
     @ViewBuilder var content: () -> Content
+
+    init(
+        headline: String,
+        subtitle: String,
+        eyebrow: String? = nil,
+        accentOnDark: Color = .dealioTealBright,
+        step: Int = 0,
+        @ViewBuilder heroTrailing: @escaping () -> HeroTrailing,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.headline = headline
+        self.subtitle = subtitle
+        self.eyebrow = eyebrow
+        self.accentOnDark = accentOnDark
+        self.step = step
+        self.heroTrailing = heroTrailing
+        self.content = content
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -54,9 +81,26 @@ struct AuthScaffold<Content: View>: View {
 
     private func hero(topInset: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            DealioLogo(onDark: true)
+            HStack(alignment: .center) {
+                DealioLogo(onDark: true)
+                Spacer(minLength: 12)
+                heroTrailing()
+            }
 
-            Spacer().frame(height: 36)
+            if step > 0 {
+                Spacer().frame(height: 18)
+                StepTrack(step: step, accentOnDark: accentOnDark)
+            }
+
+            Spacer().frame(height: step > 0 ? 20 : 36)
+
+            if let eyebrow {
+                Text(eyebrow.uppercased())
+                    .font(.system(size: 11, weight: .black))
+                    .tracking(1.1)
+                    .foregroundStyle(accentOnDark)
+                Spacer().frame(height: 8)
+            }
 
             Text(headline)
                 .font(.system(size: 30, weight: .bold))
@@ -94,7 +138,7 @@ struct AuthScaffold<Content: View>: View {
                 Circle()
                     .fill(
                         RadialGradient(
-                            colors: [Color.dealioTealBright.opacity(0.38), .clear],
+                            colors: [accentOnDark.opacity(0.38), .clear],
                             center: .center, startRadius: 0, endRadius: 150
                         )
                     )
@@ -104,7 +148,7 @@ struct AuthScaffold<Content: View>: View {
                 Circle()
                     .fill(
                         RadialGradient(
-                            colors: [Color.dealioTealBright.opacity(0.16), .clear],
+                            colors: [accentOnDark.opacity(0.16), .clear],
                             center: .center, startRadius: 0, endRadius: 110
                         )
                     )
@@ -128,5 +172,21 @@ struct AuthScaffold<Content: View>: View {
                     .fill(.white)
                     .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 8)
             )
+    }
+}
+
+extension AuthScaffold where HeroTrailing == EmptyView {
+    /// For auth screens with nothing to put opposite the logo.
+    init(
+        headline: String,
+        subtitle: String,
+        eyebrow: String? = nil,
+        accentOnDark: Color = .dealioTealBright,
+        step: Int = 0,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.init(headline: headline, subtitle: subtitle, eyebrow: eyebrow,
+                  accentOnDark: accentOnDark, step: step,
+                  heroTrailing: { EmptyView() }, content: content)
     }
 }

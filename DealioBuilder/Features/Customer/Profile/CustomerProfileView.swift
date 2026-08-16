@@ -72,7 +72,7 @@ struct CustomerProfileView: View {
 
     private func header(topInset: CGFloat) -> some View {
         VStack(spacing: 14) {
-            InitialsAvatar(name: displayName, tint: .dealioTealBright, size: 76)
+            ProfileAvatarView(size: 84)
                 .overlay(Circle().strokeBorder(.white.opacity(0.25), lineWidth: 1))
 
             VStack(spacing: 3) {

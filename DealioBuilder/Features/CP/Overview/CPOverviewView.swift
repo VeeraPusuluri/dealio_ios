@@ -94,7 +94,7 @@ struct CPOverviewView: View {
         let name = model.profile?.fullName ?? auth.user?.fullName ?? "Partner"
         return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                InitialsAvatar(name: name, size: 48)
+                AccountAvatar(size: 48)
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Welcome back").font(.caption.weight(.semibold)).foregroundStyle(Color.dealioTealBright)
                     Text(name.components(separatedBy: " ").first ?? name)

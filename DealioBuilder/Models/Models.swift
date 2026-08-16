@@ -8,6 +8,12 @@ struct AuthUser: Codable, Identifiable {
     let phone: String?
     let role: String?
     let email: String?
+    /// The account's profile picture. Belongs to the person, not the role — the
+    /// same URL is drawn on the buyer's profile page, the partner's credential
+    /// and the builder's settings.
+    var avatarUrl: String?
+
+    var avatarURL: URL? { AppConfig.resolveAssetURL(avatarUrl) }
 }
 
 struct AuthData: Codable {

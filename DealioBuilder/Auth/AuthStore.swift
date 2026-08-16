@@ -47,7 +47,24 @@ final class AuthStore: ObservableObject {
             self.isAuthenticated = true
             // Re-register the device for push on a restored session.
             Task { await PushRegistrar.shared.registerIfPossible() }
+            // The stored copy is whatever was true at the last sign-in, which
+            // can be months old. Anything changed since — a new profile
+            // picture, a renamed account — would otherwise never appear until
+            // the session was thrown away and made again.
+            Task { await refreshMe() }
         }
+    }
+
+    /// Re-reads the signed-in account from the server.
+    ///
+    /// Best-effort: a failure leaves the stored copy in place, which is still a
+    /// usable session. Only an outright 401 means anything, and the API client
+    /// already surfaces that.
+    func refreshMe() async {
+        guard isAuthenticated else { return }
+        guard let fresh: AuthUser = try? await APIClient.shared.get("/auth/me") else { return }
+        user = fresh
+        persistSession()
     }
 
     // MARK: Request bodies
@@ -60,6 +77,37 @@ final class AuthStore: ObservableObject {
     private struct EnsureBuilderRequest: Encodable { let name: String; let email: String?; let phone: String?; let userId: Int }
 
     struct OTPSendResult: Decodable { let maskedPhone: String?; let demoCode: String? }
+
+    // MARK: Pre-flight
+
+    private struct PhoneLookupRequest: Encodable { let phone: String }
+
+    /// What the backend knows about a number before an OTP is spent on it.
+    struct PhoneLookup: Decodable {
+        let exists: Bool
+        let suspended: Bool
+        /// The account's real role, or `nil` while suspended.
+        let role: String?
+    }
+
+    /// Asks the backend about a number before sending a code.
+    ///
+    /// Without this, someone signing in under the wrong role pill — or with no
+    /// account at all — only finds out after typing a code, because the failure
+    /// happens at verify time.
+    func lookup(countryCode: String, phone: String) async throws -> PhoneLookup {
+        try await APIClient.shared.post(
+            "/auth/phone/lookup",
+            body: PhoneLookupRequest(phone: e164(countryCode: countryCode, phone: phone)),
+            authorized: false
+        )
+    }
+
+    /// "+919876543210" — the shape the lookup keys on.
+    nonisolated func e164(countryCode: String, phone: String) -> String {
+        "+" + countryCode.filter(\.isNumber) + phone.filter(\.isNumber)
+    }
+
     // MARK: Flow
 
     /// Sends an OTP to the phone — the login endpoint for an existing user, or the
@@ -131,6 +179,27 @@ final class AuthStore: ObservableObject {
         )
         self.builderId = result.builderId
         UserDefaults.standard.set(result.builderId, forKey: builderIdKey)
+    }
+
+    // MARK: Profile picture
+
+    /// Replaces the signed-in person's picture.
+    ///
+    /// The updated user is written back to the store, which is the app's only
+    /// copy of the account between launches — so a new photo shows on every
+    /// screen at once rather than after a re-login.
+    func uploadAvatar(data: Data, fileName: String, mimeType: String) async throws {
+        let updated: AuthUser = try await APIClient.shared.upload(
+            "/auth/me/avatar", fileData: data, fileName: fileName, mimeType: mimeType
+        )
+        user = updated
+        persistSession()
+    }
+
+    func removeAvatar() async throws {
+        let updated: AuthUser = try await APIClient.shared.delete("/auth/me/avatar")
+        user = updated
+        persistSession()
     }
 
     func logout() {

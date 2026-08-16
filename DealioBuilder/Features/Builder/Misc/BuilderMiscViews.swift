@@ -110,6 +110,18 @@ struct BuilderSettingsView: View {
 
     var body: some View {
         List {
+            Section {
+                // The picture belongs to the account, not the role, so the
+                // builder sets theirs from the same control the buyer and the
+                // partner use.
+                VStack(spacing: 8) {
+                    ProfileAvatarView(size: 84, ringColor: Color.dealioCardBorder)
+                    Text(auth.user?.fullName ?? "Builder").font(.headline)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .listRowBackground(Color.clear)
+            }
             Section("Account") {
                 row("Name", auth.user?.fullName ?? "—")
                 row("Phone", auth.user?.phone ?? "—")
