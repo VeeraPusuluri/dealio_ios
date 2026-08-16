@@ -90,7 +90,7 @@ iOS side at baseline: 85 Swift files / ~10k lines.
 | # | Feature | Android source | iOS status |
 |---|---|---|---|
 | 3.1 | Home: earnings + counts, move queue below | `ui/cp/overview/CpOverviewScreen.kt` | ✅ done — move queue below earnings |
-| 3.2 | Partner credential card — portrait, authorisation, partner ID | `ui/cp/CpCredential.kt`, `ui/cp/overview/CpIdentityDialog.kt` | ⬜ pending |
+| 3.2 | Partner credential card — portrait, authorisation, partner ID | `ui/cp/CpCredential.kt`, `ui/cp/overview/CpIdentityDialog.kt` | ✅ done — `CpCredential.swift` + `CpIdentitySheet.swift` |
 | 3.3 | Leads list + create a lead | `ui/cp/leads/LeadsScreen.kt` | ✅ done — list split + refer a buyer |
 | 3.4 | Deals tile lands on the Deals side of the pipeline | `ui/cp/overview/` | ✅ done |
 | 3.5 | CP deal detail — spine, party rail, buyer *and* builder threads | `ui/cp/leads/CpDealDetailScreen.kt` | ✅ done — shared `DealRoom` |
@@ -119,7 +119,7 @@ iOS side at baseline: 85 Swift files / ~10k lines.
 | 3.28 | Social analytics | `ui/cp/growth/SocialAnalyticsScreen.kt` | 🟡 partial |
 | 3.29 | Community / JV | `ui/cp/growth/CommunityJvScreens.kt` | 🟡 partial |
 | 3.30 | Loan assist | `ui/cp/loan/CpLoanAssistScreen.kt` | 🟡 partial |
-| 3.31 | Profile — portrait, photo change, authorisation + ID under it | `ui/cp/profile/CpProfileScreen.kt` | 🟡 partial — portrait + photo change landed; authorisation/ID card pending |
+| 3.31 | Profile — portrait, photo change, authorisation + ID under it | `ui/cp/profile/CpProfileScreen.kt` | ✅ done — the same card is the profile hero |
 | 3.32 | More page led by the partner's own account | `ui/cp/more/CpMoreScreen.kt` | 🟡 partial |
 | 3.33 | Notification centre | `ui/cp/notifications/CpNotificationsScreen.kt` | ⬜ pending |
 | 3.34 | Share a project with a tracked link (`POST .../share-link`) | `ui/cp/projects/` | ⬜ pending |
@@ -221,6 +221,7 @@ are verified by compile and by their models' endpoints only.
 ## Changelog
 
 <!-- Newest first. One line per landed commit. -->
+- `5b0b2d2` cp: tap the portrait on the home page to show your credential
 - `7d04b74` auth: pick a role to sign in as, and a picture that actually appears
 - `4737019` customer: a bookmark on every project, and a shelf that holds them
 - `364c003` cp: refer a buyer, and stop counting one row as both a lead and a deal
