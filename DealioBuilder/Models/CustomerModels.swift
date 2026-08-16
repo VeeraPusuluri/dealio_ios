@@ -16,6 +16,12 @@ struct CustomerDeal: Codable, Identifiable {
     let builderName: String?
     let cpName: String?
     let messages: [DealMessage]?
+    // The deal flow reads these: whether each side has agreed, when the deal
+    // last moved, and what has happened on it.
+    var cpAgreed: Bool?
+    var customerConfirmed: Bool?
+    var updatedAt: String?
+    var events: [DealEvent]?
 }
 
 /// A site-visit / meeting — the `portal/customer/meetings` shape.

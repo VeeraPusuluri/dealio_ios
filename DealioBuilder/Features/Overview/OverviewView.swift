@@ -37,12 +37,16 @@ final class OverviewViewModel: ObservableObject {
     var closedDeals: Int {
         deals.filter { statusColor($0.status) == .green }.count
     }
+
+    /// Every deal as a move-queue row; `MoveQueue` keeps the ones on this viewer.
+    var moves: [MoveItem] { deals.map { $0.moveItem() } }
 }
 
 struct OverviewView: View {
     @Binding var selection: Int
     @EnvironmentObject private var auth: AuthStore
     @StateObject private var viewModel = OverviewViewModel()
+    @State private var openDeal: DealRoute?
 
     private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
 
@@ -64,6 +68,13 @@ struct OverviewView: View {
                             StatCard(title: "Leads", value: "\(viewModel.leads.count)", systemImage: "person.2.fill", tint: .orange, action: { selection = 2 })
                             StatCard(title: "Active Deals", value: "\(viewModel.deals.count)", systemImage: "doc.text.fill", tint: .blue, action: { selection = 3 })
                             StatCard(title: "Closed", value: "\(viewModel.closedDeals)", systemImage: "checkmark.seal.fill", tint: .green, action: { selection = 3 })
+                        }
+
+                        // Under the numbers, not above them: the builder opens on
+                        // the pipeline's size, then on the deals inside it that
+                        // cannot move without them.
+                        MoveQueue(viewer: .builder, items: viewModel.moves) { dealId in
+                            openDeal = DealRoute(id: dealId)
                         }
 
                         if !viewModel.leads.isEmpty {
@@ -88,6 +99,12 @@ struct OverviewView: View {
                             .foregroundStyle(.brandTeal)
                     }
                 }
+            }
+            .navigationDestination(item: $openDeal) { route in
+                BuilderDealDetailView(
+                    dealId: route.id,
+                    title: viewModel.deals.first { $0.id == route.id }?.customerName ?? "Deal"
+                )
             }
             .refreshable { await reload() }
             .task { await reload() }

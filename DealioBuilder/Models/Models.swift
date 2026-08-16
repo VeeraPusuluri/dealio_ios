@@ -122,4 +122,22 @@ struct Deal: Codable, Identifiable {
     let cpName: String?
     let createdAt: String?
     var paymentSchedule: [Installment]? = nil
+    // Read by the move queue: whether each side has agreed (the baton splits in
+    // two at Agreement) and when the deal last moved (staleness).
+    var updatedAt: String? = nil
+    var cpAgreed: Bool? = nil
+    var customerConfirmed: Bool? = nil
+
+    /// This deal as a move-queue row.
+    func moveItem(subtitle: String? = nil) -> MoveItem {
+        MoveItem(
+            dealId: id,
+            title: customerName ?? "Deal",
+            subtitle: subtitle ?? projectName ?? "",
+            rawStatus: status ?? "",
+            cpAgreed: cpAgreed ?? false,
+            customerConfirmed: customerConfirmed ?? false,
+            idleDays: daysSince(updatedAt ?? createdAt)
+        )
+    }
 }

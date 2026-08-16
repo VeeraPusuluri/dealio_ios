@@ -8,6 +8,20 @@ final class CPOverviewModel: ObservableObject {
     @Published var loading = true
     @Published var error: String?
 
+    /// The CP's leads as move-queue rows. `/cp/:id/leads` returns both sides of
+    /// the lead/deal line, and `MoveQueue` keeps whichever the baton is on.
+    var moves: [MoveItem] {
+        leads.map { lead in
+            MoveItem(
+                dealId: lead.id,
+                title: lead.customerName ?? "Lead",
+                subtitle: lead.projectName ?? "",
+                rawStatus: lead.status ?? "",
+                idleDays: daysSince(lead.createdAt)
+            )
+        }
+    }
+
     func load(cpUserId: Int) async {
         loading = profile == nil
         error = nil
@@ -29,6 +43,7 @@ struct CPOverviewView: View {
     @Binding var selection: Int
     @EnvironmentObject private var auth: AuthStore
     @StateObject private var model = CPOverviewModel()
+    @State private var openDeal: DealRoute?
 
     private var activeLeads: Int { model.leads.filter { ($0.status ?? "") != "Booked" && ($0.status ?? "") != "Closed" }.count }
 
@@ -43,6 +58,13 @@ struct CPOverviewView: View {
                         ErrorBanner(message: error).padding(.horizontal)
                     } else {
                         statGrid
+                        // Below the earnings and the counts: the partner sees
+                        // what they have made, then the deals that cannot move
+                        // without them.
+                        MoveQueue(viewer: .cp, items: model.moves) { dealId in
+                            openDeal = DealRoute(id: dealId)
+                        }
+                        .padding(.horizontal)
                         dueTodaySection
                         quickActions
                         recentLeads
@@ -52,6 +74,12 @@ struct CPOverviewView: View {
             }
             .background(Color.dealioMist.ignoresSafeArea())
             .navigationBarHidden(true)
+            .navigationDestination(item: $openDeal) { route in
+                CPDealDetailView(
+                    dealId: route.id,
+                    title: model.leads.first { $0.id == route.id }?.customerName ?? "Deal"
+                )
+            }
             .task { await model.load(cpUserId: auth.user?.id ?? 0) }
             .refreshable { await model.load(cpUserId: auth.user?.id ?? 0) }
         }

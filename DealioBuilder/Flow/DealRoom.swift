@@ -13,6 +13,11 @@ import SwiftUI
 /// the selected thread's transcript, and what has happened so far
 /// (`ActivityLedger`).
 
+/// A deal id, wrapped so it can drive `navigationDestination(item:)`.
+struct DealRoute: Identifiable, Hashable {
+    let id: Int
+}
+
 /// A deal reduced to what the room renders, so each role's own DTO can feed it.
 struct DealRoomData {
     let id: Int
