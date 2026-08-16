@@ -30,9 +30,9 @@ iOS side at baseline: 85 Swift files / ~10k lines.
 | 0.9 | **Conversation inbox** — one row per *thread* (not per deal), unread counts | `ui/flow/ConversationInbox.kt` | ✅ done — `Flow/ConversationInbox.swift` |
 | 0.10 | Thread summaries + read receipts (`POST /threads/summary`, `/threads/read`) | `data/ThreadRepository.kt` | ✅ done — `Networking/ThreadService.swift` |
 | 0.11 | Nudge a stalled deal (`POST /deals/:id/nudge`) | `data/api/ThreadApi.kt` | ✅ done — nudge in `Flow/DealRoom.swift` |
-| 0.12 | Portal accent — each role's shell lit in its own colour | `ui/components/PortalAccent.kt` | ⬜ pending |
-| 0.13 | Profile avatar (view full screen / badge to replace / remove) | `ui/components/ProfileAvatar.kt` | ⬜ pending |
-| 0.14 | Avatar endpoints `POST/DELETE /auth/me/avatar` | `data/api/AuthApi.kt` | ⬜ pending |
+| 0.12 | Portal accent — each role's shell lit in its own colour | `ui/components/PortalAccent.kt` | ✅ done — `Auth/Roles.swift` accents, hero lit per role |
+| 0.13 | Profile avatar (view full screen / badge to replace / remove) | `ui/components/ProfileAvatar.kt` | ✅ done — `Features/Shared/ProfileAvatarView.swift` |
+| 0.14 | Avatar endpoints `POST/DELETE /auth/me/avatar` | `data/api/AuthApi.kt` | ✅ done |
 | 0.15 | Floating pill nav that stays up on nested pages | `ui/components/FloatingPillNav.kt`, the three roots | 🟡 partial — tab bar exists, nested pages push over it |
 | 0.16 | Status-bar / safe-area legibility on every screen | `ui/theme/SystemBars.kt` | ✅ done (SwiftUI default + `AuthScaffold`) |
 | 0.17 | Splash screen with drawn tagline | `ui/screens/SplashScreen.kt` | ✅ done (`Features/SplashView.swift`) |
@@ -46,9 +46,9 @@ iOS side at baseline: 85 Swift files / ~10k lines.
 | # | Feature | Android source | iOS status |
 |---|---|---|---|
 | 1.1 | Phone + OTP sign-in | `ui/screens/LoginScreen.kt` | ✅ done |
-| 1.2 | Role selector pills on sign-in, hero lit in the role's colour | `ui/components/RoleSelector.kt` | 🟡 partial — dial-code picker landed; role pills still pending |
+| 1.2 | Role selector pills on sign-in, hero lit in the role's colour | `ui/components/RoleSelector.kt` | ✅ done — pills + role-tinted hero + step track |
 | 1.3 | Self-serve signup hidden behind a flag | `FeatureFlags.kt` | ✅ done (`AppConfig.signupEnabled`) |
-| 1.4 | Phone lookup before OTP (`POST /auth/phone/lookup`) | `data/api/AuthApi.kt` | ⬜ pending |
+| 1.4 | Phone lookup before OTP (`POST /auth/phone/lookup`) | `data/api/AuthApi.kt` | ✅ done — pre-flight before the OTP is spent |
 | 1.5 | Firebase phone auth (`POST /auth/firebase`) | `data/FirebasePhoneAuth.kt` | ⬜ pending |
 | 1.6 | Refresh token — an expired access token renews, never ends, the session | `data/TokenStore.kt`, `ui/auth/AuthViewModel.kt` | ⬜ pending |
 | 1.7 | Expired session routes to sign-in rather than a dead end | `MainActivity.kt` | ⬜ pending |
@@ -81,7 +81,7 @@ iOS side at baseline: 85 Swift files / ~10k lines.
 | 2.21 | Snagging | `ui/builder/snagging/BuilderSnaggingScreen.kt` | 🟡 partial |
 | 2.22 | Virtual tours | `ui/builder/virtualtours/VirtualToursScreen.kt` | 🟡 partial |
 | 2.23 | AI assistant | `ui/builder/ai/AiAssistantScreen.kt` | 🟡 partial |
-| 2.24 | Settings, incl. **Edit** the builder's own profile + avatar | `ui/builder/settings/BuilderSettingsScreen.kt` | ⬜ pending |
+| 2.24 | Settings, incl. **Edit** the builder's own profile + avatar | `ui/builder/settings/BuilderSettingsScreen.kt` | 🟡 partial — avatar landed; profile *edit* still pending |
 | 2.25 | Conversations inbox (per-thread rows, unread badges) | `ui/builder/conversations/` | ✅ done — per-thread rows + unread |
 | 2.26 | Notification centre | `ui/builder/notifications/NotificationsScreen.kt` | 🟡 partial |
 
@@ -119,7 +119,7 @@ iOS side at baseline: 85 Swift files / ~10k lines.
 | 3.28 | Social analytics | `ui/cp/growth/SocialAnalyticsScreen.kt` | 🟡 partial |
 | 3.29 | Community / JV | `ui/cp/growth/CommunityJvScreens.kt` | 🟡 partial |
 | 3.30 | Loan assist | `ui/cp/loan/CpLoanAssistScreen.kt` | 🟡 partial |
-| 3.31 | Profile — portrait, photo change, authorisation + ID under it | `ui/cp/profile/CpProfileScreen.kt` | 🟡 partial |
+| 3.31 | Profile — portrait, photo change, authorisation + ID under it | `ui/cp/profile/CpProfileScreen.kt` | 🟡 partial — portrait + photo change landed; authorisation/ID card pending |
 | 3.32 | More page led by the partner's own account | `ui/cp/more/CpMoreScreen.kt` | 🟡 partial |
 | 3.33 | Notification centre | `ui/cp/notifications/CpNotificationsScreen.kt` | ⬜ pending |
 | 3.34 | Share a project with a tracked link (`POST .../share-link`) | `ui/cp/projects/` | ⬜ pending |
@@ -142,7 +142,7 @@ iOS side at baseline: 85 Swift files / ~10k lines.
 | 4.12 | Customer deal detail with spine + party rail | `ui/customer/journey/DealDetailScreen.kt` | ✅ done — `CustomerDealRoomView` |
 | 4.13 | Accept a negotiation / confirm a deal | `data/api/CustomerApi.kt` | ⬜ pending |
 | 4.14 | Messaging handed off to Conversations, as the CP page does | `ui/customer/conversations/` | 🟡 partial |
-| 4.15 | Profile — set and remove a picture | `ui/customer/profile/ProfileScreen.kt` | ⬜ pending |
+| 4.15 | Profile — set and remove a picture | `ui/customer/profile/ProfileScreen.kt` | ✅ done — set and remove |
 | 4.16 | Preferred city | `data/api/CustomerApi.kt` | ⬜ pending |
 | 4.17 | **Meetups** — always-there way in, list, event page, RSVP | `ui/customer/meetups/` | ⬜ pending |
 | 4.18 | Meetups strip (off the projects page) | `ui/customer/meetups/MeetupsStrip.kt` | ⬜ pending |
@@ -204,6 +204,15 @@ real data: sign-in (dial-code picker), builder Overview (move queue, baton copy,
 staleness), CP Overview (move queue, stalled-first ordering, lead/deal counts),
 customer Explore (bookmarks, saved state restored from the server).
 
+The role picker and the avatar were confirmed end-to-end: the sign-in hero
+re-tints per role, and a picture set server-side appears in the app on next
+launch without a re-login (test images were removed from the dev accounts
+afterwards).
+
+**Known, not fixed:** the notification-permission prompt fires on launch, over
+the sign-in card, before the user has done anything. Android asks after sign-in.
+Left alone because push is out of scope for this port.
+
 Not confirmed by tapping through: the deal room, the visit-answer sheet, the CRM
 forms and the pipeline's stage moves. macOS refused this session permission to
 send Apple events to the Simulator, so there was no way to drive the UI; those
@@ -212,6 +221,7 @@ are verified by compile and by their models' endpoints only.
 ## Changelog
 
 <!-- Newest first. One line per landed commit. -->
+- `7d04b74` auth: pick a role to sign in as, and a picture that actually appears
 - `4737019` customer: a bookmark on every project, and a shelf that holds them
 - `364c003` cp: refer a buyer, and stop counting one row as both a lead and a deal
 - `f15d1ed` cp: a CRM that can be written to, and the rest of the world in the picker
