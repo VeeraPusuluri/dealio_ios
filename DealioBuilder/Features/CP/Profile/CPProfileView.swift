@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 import UniformTypeIdentifiers
 
 @MainActor
@@ -77,6 +78,9 @@ struct CPProfileView: View {
     @StateObject private var model = CPProfileModel()
     @State private var docPickerFor: String?
     @State private var showPhoneVerify = false
+    @State private var pickingPhoto = false
+    @State private var pickedPhoto: PhotosPickerItem?
+    @State private var uploadingPhoto = false
 
     private var cpUserId: Int { auth.user?.id ?? 0 }
 
@@ -87,19 +91,22 @@ struct CPProfileView: View {
                     let cp = model.profile?.cp
                     let name = model.profile?.fullName ?? auth.user?.fullName ?? "Partner"
 
-                    // Header
-                    VStack(spacing: 12) {
-                        ProfileAvatarView(size: 84, ringColor: Color.dealioCardBorder, badgeColor: .dealioOrange)
-                        VStack(spacing: 4) {
-                            Text(name).font(.title3.weight(.bold))
-                            if let tier = cp?.tier {
-                                Text("\(tier) Partner").font(.caption.weight(.semibold))
-                                    .padding(.horizontal, 10).padding(.vertical, 3)
-                                    .background(Color.dealioOrange.opacity(0.15), in: Capsule())
-                                    .foregroundStyle(Color.dealioOrange)
-                            }
-                        }
-                    }
+                    // The credential is the hero here, exactly as it is behind
+                    // the home-screen portrait — one artifact, two ways in, so
+                    // a partner never has to wonder which is "the real one".
+                    CpCredentialCard(
+                        name: name,
+                        tier: cp?.tier ?? "Silver",
+                        photoURL: auth.user?.avatarURL ?? AppConfig.resolveAssetURL(cp?.photoUrl),
+                        phone: model.profile?.phone ?? auth.user?.phone,
+                        city: cp?.city,
+                        reraNumber: cp?.reraNumber,
+                        authorizedBuilders: model.profile?.authorizedBuilders ?? [],
+                        partnerId: cp?.id,
+                        uploading: uploadingPhoto,
+                        onChangePhoto: { pickingPhoto = true }
+                    )
+                    .padding(.horizontal)
                     .padding(.top, 16)
 
                     // Details
@@ -155,6 +162,24 @@ struct CPProfileView: View {
                 docPickerFor = nil
                 if case .success(let url) = result {
                     Task { await model.uploadDocument(docType: docType, fileURL: url, cpUserId: cpUserId) }
+                }
+            }
+            .photosPicker(isPresented: $pickingPhoto, selection: $pickedPhoto, matching: .images)
+            .onChange(of: pickedPhoto) { _, item in
+                guard let item else { return }
+                Task {
+                    pickedPhoto = nil
+                    uploadingPhoto = true
+                    defer { uploadingPhoto = false }
+                    guard let data = try? await item.loadTransferable(type: Data.self) else {
+                        model.toast = "Could not read that image."
+                        return
+                    }
+                    do {
+                        try await auth.uploadAvatar(data: data, fileName: "avatar.jpg", mimeType: "image/jpeg")
+                    } catch {
+                        model.toast = authMessage(error)
+                    }
                 }
             }
             .sheet(isPresented: $showPhoneVerify) {

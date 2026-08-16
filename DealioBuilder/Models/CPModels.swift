@@ -33,9 +33,25 @@ struct CpProfile: Codable {
     let email: String?
     let phone: String?
     let cp: CpInfo?
+    /// The builders who have endorsed this partner. The half of a credential a
+    /// customer cannot verify for themselves, so it leads the card.
+    var authorizedBuilders: [CpAuthorizedBuilder]?
+}
+
+/// A builder's endorsement of a channel partner.
+struct CpAuthorizedBuilder: Codable, Identifiable, Hashable {
+    let builderId: Int
+    let companyName: String
+    var authorizedAt: String?
+
+    var id: Int { builderId }
 }
 
 struct CpInfo: Codable {
+    /// The channel-partner row's own id — the number struck on the card, and not
+    /// the same as the user id the `/cp/:cpUserId/...` routes are keyed by.
+    var id: Int?
+    var photoUrl: String?
     let city: String?
     let reraNumber: String?
     let tier: String?

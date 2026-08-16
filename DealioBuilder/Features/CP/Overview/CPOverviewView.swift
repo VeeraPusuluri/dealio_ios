@@ -46,6 +46,8 @@ struct CPOverviewView: View {
     @EnvironmentObject private var auth: AuthStore
     @StateObject private var model = CPOverviewModel()
     @State private var openDeal: DealRoute?
+    @State private var showingIdentity = false
+    @State private var openProfile = false
 
     /// Only rows still on the lead side of the conversion line. Counting deals
     /// here too is what made this tile and the Deals tile disagree.
@@ -78,6 +80,14 @@ struct CPOverviewView: View {
             }
             .background(Color.dealioMist.ignoresSafeArea())
             .navigationBarHidden(true)
+            .navigationDestination(isPresented: $openProfile) { CPProfileView() }
+            .fullScreenCover(isPresented: $showingIdentity) {
+                CpIdentitySheet(
+                    profile: model.profile,
+                    fallbackName: auth.user?.fullName ?? "Partner",
+                    onViewProfile: { openProfile = true }
+                )
+            }
             .navigationDestination(item: $openDeal) { route in
                 CPDealDetailView(
                     dealId: route.id,
@@ -94,7 +104,11 @@ struct CPOverviewView: View {
         let name = model.profile?.fullName ?? auth.user?.fullName ?? "Partner"
         return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                AccountAvatar(size: 48)
+                Button { showingIdentity = true } label: {
+                    AccountAvatar(size: 48)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Show your partner credential")
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Welcome back").font(.caption.weight(.semibold)).foregroundStyle(Color.dealioTealBright)
                     Text(name.components(separatedBy: " ").first ?? name)
