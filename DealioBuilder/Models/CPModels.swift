@@ -64,6 +64,28 @@ struct CpContact: Codable, Identifiable {
     let name: String?
     let phone: String?
     let bhkPreference: String?
+    /// Dial code, e.g. `+91`. Optional because rows written before the column
+    /// existed carry none, and every reader treats a missing one as India.
+    var countryCode: String?
+    var email: String?
+    var notes: String?
+    var designation: String?
+    var salary: Double?
+    var investment: Double?
+    var address: String?
+    var createdAt: String?
+
+    /// The number as it should be dialled.
+    var dialable: String { (countryCode ?? "+91") + (phone ?? "") }
+
+    /// This contact as an editable payload.
+    var payload: CpContactPayload {
+        CpContactPayload(
+            name: name ?? "", phone: phone ?? "", countryCode: countryCode ?? "+91",
+            email: email, notes: notes, bhkPreference: bhkPreference,
+            designation: designation, salary: salary, investment: investment, address: address
+        )
+    }
 }
 
 /// A scheduled follow-up — `cp/:id/follow-ups`.

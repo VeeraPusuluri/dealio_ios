@@ -33,26 +33,34 @@ struct DealioField<Content: View>: View {
 // MARK: - Phone field
 
 /// Country code + phone number entry, like the web/Android login.
+///
+/// The code is picked, not typed: it used to be a free text field that accepted
+/// any five characters, so an NRI signing in from Dubai had to know "+971" and
+/// could just as easily enter "+97".
 struct PhoneField: View {
     @Binding var countryCode: String
     @Binding var phone: String
     var enabled: Bool = true
 
     @FocusState private var focus: Field?
-    private enum Field { case code, phone }
+    private enum Field { case phone }
+    @State private var picking = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            DealioField(label: "Code", focused: focus == .code) {
-                TextField("+91", text: $countryCode)
-                    .keyboardType(.phonePad)
-                    .focused($focus, equals: .code)
-                    .onChange(of: countryCode) { _, new in
-                        let filtered = String(new.prefix(5).filter { $0.isNumber || $0 == "+" })
-                        if filtered != new { countryCode = filtered }
+            DealioField(label: "Code", focused: false) {
+                Button { picking = true } label: {
+                    HStack(spacing: 4) {
+                        Text(flagFor(countryCode)).font(.footnote)
+                        Text(countryCode)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.down").font(.caption2).foregroundStyle(.secondary)
                     }
+                    .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
             }
-            .frame(width: 96)
+            .frame(width: 110)
 
             DealioField(label: "Phone number", focused: focus == .phone) {
                 TextField("9876543210", text: $phone)
@@ -66,6 +74,7 @@ struct PhoneField: View {
             }
         }
         .disabled(!enabled)
+        .sheet(isPresented: $picking) { DialCodePicker(selection: $countryCode) }
     }
 }
 
