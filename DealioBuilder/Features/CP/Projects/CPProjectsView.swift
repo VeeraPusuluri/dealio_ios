@@ -43,7 +43,7 @@ struct CPProjectsView: View {
                         LazyVStack(spacing: 16) {
                             ForEach(filtered) { project in
                                 NavigationLink(value: project) {
-                                    CustomerProjectCard(project: project)
+                                    CustomerProjectCard(project: project, showsBookmark: false)
                                 }
                                 .buttonStyle(.plain)
                             }

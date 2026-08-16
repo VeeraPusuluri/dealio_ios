@@ -5,6 +5,10 @@ import SwiftUI
 /// `FloatingTabBar`) whose icons bounce on tap.
 struct CustomerTabView: View {
     @State private var selection = 0
+    /// Bookmarks live on the shell, not in any one screen: the card in Explore,
+    /// the button on a project page and the Saved shelf all have to agree the
+    /// moment one of them is tapped.
+    @StateObject private var saved = SavedProjectsStore()
 
     private let items: [FloatingTabItem] = [
         .init(icon: "house.fill", label: "Explore"),
@@ -24,5 +28,7 @@ struct CustomerTabView: View {
                 CustomerProfileView().tag(4).modifier(FloatingTabBarPage())
             }
         }
+        .environmentObject(saved)
+        .task { await saved.load() }
     }
 }

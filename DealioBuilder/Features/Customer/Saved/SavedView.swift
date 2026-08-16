@@ -1,57 +1,49 @@
 import SwiftUI
 
-@MainActor
-final class SavedModel: ObservableObject {
-    @Published var items: [Shortlist] = []
-    @Published var loading = true
-    @Published var error: String?
-
-    func load(phone: String) async {
-        loading = items.isEmpty
-        error = nil
-        do {
-            items = try await APIClient.shared.get("/portal/customer/shortlist?phone=\(phone)")
-        } catch { self.error = authMessage(error) }
-        loading = false
-    }
-}
-
+/// The shelf a bookmarked project is kept on.
+///
+/// This used to read `/portal/customer/shortlist`, which is a different thing
+/// entirely — a shortlist is a *unit* put to the builder for a price. So a buyer
+/// who had bookmarked five projects opened Saved and found either nothing or a
+/// list of units they had asked to be quoted on.
 struct SavedView: View {
-    @EnvironmentObject private var auth: AuthStore
-    @StateObject private var model = SavedModel()
+    @EnvironmentObject private var saved: SavedProjectsStore
 
     var body: some View {
         NavigationStack {
             Group {
-                if model.loading {
+                if saved.loading {
                     ProgressView()
-                } else if let error = model.error {
-                    ErrorBanner(message: error).padding()
-                } else if model.items.isEmpty {
-                    ContentUnavailableView("Nothing saved yet",
+                } else if saved.projects.isEmpty {
+                    ContentUnavailableView(
+                        "Nothing saved yet",
                         systemImage: "bookmark",
-                        description: Text("Shortlist units you like to compare them here."))
+                        description: Text("Tap the bookmark on a project to keep it here.")
+                    )
                 } else {
-                    List(model.items) { item in
-                        HStack(spacing: 12) {
-                            IconBadge(systemImage: "bookmark.fill", tint: .dealioOrange)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.projectName ?? "Saved unit").font(.subheadline.weight(.semibold))
-                                if let unit = item.unitId, !unit.isEmpty {
-                                    Text("Unit \(unit)").font(.caption).foregroundStyle(.secondary)
+                    ScrollView {
+                        VStack(spacing: 12) {
+                            if let error = saved.error {
+                                ErrorBanner(message: error).padding(.horizontal)
+                            }
+                            ForEach(saved.projects) { project in
+                                NavigationLink(value: project) {
+                                    CustomerProjectCard(project: project)
                                 }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal)
                             }
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 12)
                     }
-                    .listStyle(.insetGrouped)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.dealioMist.ignoresSafeArea())
             .navigationTitle("Saved")
-            .task { await model.load(phone: auth.phone) }
-            .refreshable { await model.load(phone: auth.phone) }
+            .navigationDestination(for: Project.self) { CustomerProjectDetailView(project: $0) }
+            .task { await saved.load() }
+            .refreshable { await saved.load() }
         }
     }
 }

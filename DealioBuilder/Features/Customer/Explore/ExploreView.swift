@@ -301,6 +301,10 @@ private struct Chip: View {
 /// A full-width browse card for the customer Explore list.
 struct CustomerProjectCard: View {
     let project: Project
+    /// Bookmarks are a buyer's feature. The CP portal reuses this card and has
+    /// no `SavedProjectsStore` in its environment, so it opts out rather than
+    /// resolving one that isn't there.
+    var showsBookmark = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -312,6 +316,13 @@ struct CustomerProjectCard: View {
                 if project.featured ?? false {
                     Badge(text: "Featured", systemImage: "star.fill", color: .dealioOrange)
                         .padding(10)
+                }
+                // A bookmark on every project, so keeping one takes a tap from
+                // wherever it is seen rather than only from its own page.
+                if showsBookmark {
+                    BookmarkButton(project: project)
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
             VStack(alignment: .leading, spacing: 6) {
