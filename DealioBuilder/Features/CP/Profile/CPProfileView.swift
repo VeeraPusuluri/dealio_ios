@@ -117,155 +117,157 @@ struct CPProfileView: View {
     private var cpUserId: Int { auth.user?.id ?? 0 }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    let cp = model.profile?.cp
-                    let name = model.profile?.fullName ?? auth.user?.fullName ?? "Partner"
+        // No `NavigationStack` here: this screen is always *pushed* — from the
+        // More menu and from the `.cpProfile` route — and a stack nested inside
+        // the portal's own stack gives a doubled navigation bar and a back
+        // button that unwinds the wrong one.
+        ScrollView {
+            VStack(spacing: 20) {
+                let cp = model.profile?.cp
+                let name = model.profile?.fullName ?? auth.user?.fullName ?? "Partner"
 
-                    // The credential — the same facts as a header, rendered as
-                    // the artifact a partner holds up to a customer.
-                    CPCredentialCard(
-                        name: name,
-                        tier: cp?.tier ?? "Silver",
-                        photoUrl: cp?.photoUrl ?? auth.user?.avatarUrl,
-                        phone: model.profile?.phone ?? auth.user?.phone,
-                        city: cp?.city,
-                        reraNumber: cp?.reraNumber,
-                        authorizedBuilders: model.profile?.authorizedBuilders ?? [],
-                        partnerId: model.profile?.id ?? auth.user?.id,
-                        uploadingPhoto: model.uploadingDoc == "avatar",
-                        onChangePhoto: { pickingPhoto = true }
-                    )
-                    .padding(.horizontal)
-                    .padding(.top, 16)
-
-                    // What they have earned, which is the number a partner opens
-                    // this page to check.
-                    HStack(spacing: 10) {
-                        earningsTile("Total earned", Money.inr(cp?.totalEarnings ?? 0), .green)
-                        earningsTile("Pending", Money.inr(cp?.pendingCommission ?? 0), .orange)
-                        earningsTile("Deals", "\(cp?.totalDeals ?? 0)", .brandTeal)
-                    }
-                    .padding(.horizontal)
-
-                    // Details
-                    VStack(spacing: 0) {
-                        HStack {
-                            SectionHeader(title: "Details")
-                            Spacer()
-                            Button("Edit") { editing = true }.font(.caption.weight(.semibold))
-                        }
-                        .padding(.vertical, 10)
-                        InfoRow(label: "Phone", value: model.profile?.phone ?? auth.user?.phone ?? "—")
-                        InfoRow(label: "Email", value: model.profile?.email ?? "—")
-                        InfoRow(label: "City", value: cp?.city ?? "—")
-                        InfoRow(label: "RERA", value: cp?.reraNumber ?? "—")
-                        if let bio = cp?.bio?.trimmedOrNil {
-                            Text(bio)
-                                .font(.caption).foregroundStyle(Color.dealioTextSecondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.vertical, 10)
-                        }
-                    }
-                    .padding(.horizontal, 16).cardSurface().padding(.horizontal)
-
-                    // Builders who have formally authorised this partner to
-                    // represent them — the thing a buyer is really asking about
-                    // when they ask whether a partner is "official".
-                    if let builders = model.profile?.authorizedBuilders, !builders.isEmpty {
-                        VStack(alignment: .leading, spacing: 0) {
-                            SectionHeader(title: "Authorised by").padding(.vertical, 10)
-                            ForEach(builders) { builder in
-                                HStack {
-                                    Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
-                                    Text(builder.companyName.nilIfEmpty ?? "Builder")
-                                        .font(.subheadline)
-                                    Spacer()
-                                    if let since = builder.authorizedAt?.prefix(10), !since.isEmpty {
-                                        Text(String(since))
-                                            .font(.caption2).foregroundStyle(Color.dealioTextSecondary)
-                                    }
-                                }
-                                .padding(.vertical, 9)
-                            }
-                        }
-                        .padding(.horizontal, 16).cardSurface().padding(.horizontal)
-                    }
-
-                    // Verification
-                    VStack(alignment: .leading, spacing: 0) {
-                        SectionHeader(title: "Verification").padding(.vertical, 10)
-                        VerifyRow(label: "Phone", verified: cp?.phoneVerified ?? false, actionLabel: "Verify") {
-                            showPhoneVerify = true
-                        }
-                        DocVerifyRow(
-                            label: "Aadhaar", verified: cp?.aadhaarVerified ?? false,
-                            hasDoc: (cp?.aadhaarUrl?.isEmpty == false), uploading: model.uploadingDoc == "aadhaar"
-                        ) { docPickerFor = "aadhaar" }
-                        DocVerifyRow(
-                            label: "PAN", verified: cp?.panVerified ?? false,
-                            hasDoc: (cp?.panUrl?.isEmpty == false), uploading: model.uploadingDoc == "pan"
-                        ) { docPickerFor = "pan" }
-                        DocVerifyRow(
-                            label: "RERA certificate", verified: cp?.reraVerified ?? false,
-                            hasDoc: (cp?.reraUrl?.isEmpty == false), uploading: model.uploadingDoc == "rera"
-                        ) { docPickerFor = "rera" }
-                    }
-                    .padding(.horizontal, 16).cardSurface().padding(.horizontal)
-
-                    // Security
-                    VStack(alignment: .leading, spacing: 0) {
-                        SectionHeader(title: "Security").padding(.vertical, 10)
-                        AppLockToggle()
-                    }
-                    .padding(.horizontal, 16).cardSurface().padding(.horizontal)
-
-                    Button(role: .destructive) { auth.logout() } label: {
-                        Label("Log out", systemImage: "rectangle.portrait.and.arrow.right")
-                            .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 14)
-                            .background(Color.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    }
-                    .padding(.horizontal)
-                }
-                .padding(.bottom, 30)
-            }
-            .background(Color.dealioMist.ignoresSafeArea())
-            .navigationTitle("Profile")
-            .task { await model.load(cpUserId: cpUserId) }
-            .fileImporter(
-                isPresented: Binding(get: { docPickerFor != nil }, set: { if !$0 { docPickerFor = nil } }),
-                allowedContentTypes: [.image, .pdf]
-            ) { result in
-                guard let docType = docPickerFor else { return }
-                docPickerFor = nil
-                if case .success(let url) = result {
-                    Task { await model.uploadDocument(docType: docType, fileURL: url, cpUserId: cpUserId) }
-                }
-            }
-            .photosPicker(isPresented: $pickingPhoto, selection: $photoPick, matching: .images)
-            .onChange(of: photoPick) { _, item in
-                Task {
-                    guard let data = try? await item?.loadTransferable(type: Data.self) else { return }
-                    photoPick = nil
-                    await model.uploadAvatar(auth: auth, data: data)
-                }
-            }
-            .sheet(isPresented: $editing) {
-                EditCPProfileSheet(profile: model.profile, saving: model.saving) { request in
-                    Task { if await model.saveProfile(cpUserId: cpUserId, request) { editing = false } }
-                }
-            }
-            .sheet(isPresented: $showPhoneVerify) {
-                PhoneVerifySheet(
-                    phone: model.profile?.phone ?? auth.user?.phone ?? "",
-                    model: model, cpUserId: cpUserId
+                // The credential — the same facts as a header, rendered as
+                // the artifact a partner holds up to a customer.
+                CPCredentialCard(
+                    name: name,
+                    tier: cp?.tier ?? "Silver",
+                    photoUrl: cp?.photoUrl ?? auth.user?.avatarUrl,
+                    phone: model.profile?.phone ?? auth.user?.phone,
+                    city: cp?.city,
+                    reraNumber: cp?.reraNumber,
+                    authorizedBuilders: model.profile?.authorizedBuilders ?? [],
+                    partnerId: model.profile?.id ?? auth.user?.id,
+                    uploadingPhoto: model.uploadingDoc == "avatar",
+                    onChangePhoto: { pickingPhoto = true }
                 )
+                .padding(.horizontal)
+                .padding(.top, 16)
+
+                // What they have earned, which is the number a partner opens
+                // this page to check.
+                HStack(spacing: 10) {
+                    earningsTile("Total earned", Money.inr(cp?.totalEarnings ?? 0), .green)
+                    earningsTile("Pending", Money.inr(cp?.pendingCommission ?? 0), .orange)
+                    earningsTile("Deals", "\(cp?.totalDeals ?? 0)", .brandTeal)
+                }
+                .padding(.horizontal)
+
+                // Details
+                VStack(spacing: 0) {
+                    HStack {
+                        SectionHeader(title: "Details")
+                        Spacer()
+                        Button("Edit") { editing = true }.font(.caption.weight(.semibold))
+                    }
+                    .padding(.vertical, 10)
+                    InfoRow(label: "Phone", value: model.profile?.phone ?? auth.user?.phone ?? "—")
+                    InfoRow(label: "Email", value: model.profile?.email ?? "—")
+                    InfoRow(label: "City", value: cp?.city ?? "—")
+                    InfoRow(label: "RERA", value: cp?.reraNumber ?? "—")
+                    if let bio = cp?.bio?.trimmedOrNil {
+                        Text(bio)
+                            .font(.caption).foregroundStyle(Color.dealioTextSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 10)
+                    }
+                }
+                .padding(.horizontal, 16).cardSurface().padding(.horizontal)
+
+                // Builders who have formally authorised this partner to
+                // represent them — the thing a buyer is really asking about
+                // when they ask whether a partner is "official".
+                if let builders = model.profile?.authorizedBuilders, !builders.isEmpty {
+                    VStack(alignment: .leading, spacing: 0) {
+                        SectionHeader(title: "Authorised by").padding(.vertical, 10)
+                        ForEach(builders) { builder in
+                            HStack {
+                                Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
+                                Text(builder.companyName.nilIfEmpty ?? "Builder")
+                                    .font(.subheadline)
+                                Spacer()
+                                if let since = builder.authorizedAt?.prefix(10), !since.isEmpty {
+                                    Text(String(since))
+                                        .font(.caption2).foregroundStyle(Color.dealioTextSecondary)
+                                }
+                            }
+                            .padding(.vertical, 9)
+                        }
+                    }
+                    .padding(.horizontal, 16).cardSurface().padding(.horizontal)
+                }
+
+                // Verification
+                VStack(alignment: .leading, spacing: 0) {
+                    SectionHeader(title: "Verification").padding(.vertical, 10)
+                    VerifyRow(label: "Phone", verified: cp?.phoneVerified ?? false, actionLabel: "Verify") {
+                        showPhoneVerify = true
+                    }
+                    DocVerifyRow(
+                        label: "Aadhaar", verified: cp?.aadhaarVerified ?? false,
+                        hasDoc: (cp?.aadhaarUrl?.isEmpty == false), uploading: model.uploadingDoc == "aadhaar"
+                    ) { docPickerFor = "aadhaar" }
+                    DocVerifyRow(
+                        label: "PAN", verified: cp?.panVerified ?? false,
+                        hasDoc: (cp?.panUrl?.isEmpty == false), uploading: model.uploadingDoc == "pan"
+                    ) { docPickerFor = "pan" }
+                    DocVerifyRow(
+                        label: "RERA certificate", verified: cp?.reraVerified ?? false,
+                        hasDoc: (cp?.reraUrl?.isEmpty == false), uploading: model.uploadingDoc == "rera"
+                    ) { docPickerFor = "rera" }
+                }
+                .padding(.horizontal, 16).cardSurface().padding(.horizontal)
+
+                // Security
+                VStack(alignment: .leading, spacing: 0) {
+                    SectionHeader(title: "Security").padding(.vertical, 10)
+                    AppLockToggle()
+                }
+                .padding(.horizontal, 16).cardSurface().padding(.horizontal)
+
+                Button(role: .destructive) { auth.logout() } label: {
+                    Label("Log out", systemImage: "rectangle.portrait.and.arrow.right")
+                        .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .padding(.horizontal)
             }
-            .alert(model.toast ?? "", isPresented: Binding(get: { model.toast != nil }, set: { if !$0 { model.toast = nil } })) {
-                Button("OK", role: .cancel) {}
+            .padding(.bottom, 30)
+        }
+        .background(Color.dealioMist.ignoresSafeArea())
+        .navigationTitle("Profile")
+        .task { await model.load(cpUserId: cpUserId) }
+        .fileImporter(
+            isPresented: Binding(get: { docPickerFor != nil }, set: { if !$0 { docPickerFor = nil } }),
+            allowedContentTypes: [.image, .pdf]
+        ) { result in
+            guard let docType = docPickerFor else { return }
+            docPickerFor = nil
+            if case .success(let url) = result {
+                Task { await model.uploadDocument(docType: docType, fileURL: url, cpUserId: cpUserId) }
             }
+        }
+        .photosPicker(isPresented: $pickingPhoto, selection: $photoPick, matching: .images)
+        .onChange(of: photoPick) { _, item in
+            Task {
+                guard let data = try? await item?.loadTransferable(type: Data.self) else { return }
+                photoPick = nil
+                await model.uploadAvatar(auth: auth, data: data)
+            }
+        }
+        .sheet(isPresented: $editing) {
+            EditCPProfileSheet(profile: model.profile, saving: model.saving) { request in
+                Task { if await model.saveProfile(cpUserId: cpUserId, request) { editing = false } }
+            }
+        }
+        .sheet(isPresented: $showPhoneVerify) {
+            PhoneVerifySheet(
+                phone: model.profile?.phone ?? auth.user?.phone ?? "",
+                model: model, cpUserId: cpUserId
+            )
+        }
+        .alert(model.toast ?? "", isPresented: Binding(get: { model.toast != nil }, set: { if !$0 { model.toast = nil } })) {
+            Button("OK", role: .cancel) {}
         }
     }
 }

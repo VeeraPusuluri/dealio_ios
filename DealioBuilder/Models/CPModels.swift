@@ -107,7 +107,10 @@ struct CpDealDetail: Codable, Identifiable {
 }
 
 /// A commission line — `cp/:id/commissions`.
-struct CpCommission: Codable, Identifiable {
+///
+/// `Hashable` so the earnings list can push a row by value; `id` is the deal id
+/// the commission was derived from, which is also what the deal room is keyed by.
+struct CpCommission: Codable, Identifiable, Hashable {
     let id: Int
     var status: String = ""
     var dealValue: Double?

@@ -89,11 +89,15 @@ struct CustomerProjectDetailView: View {
                         section("Tower Plans") { towerPlansSection }
                         section("Virtual Tour") { virtualTourSection }
                         if let nearby = p.nearbyHighlights, !nearby.isEmpty { section("Nearby Highlights") { nearbyList(nearby) } }
-                        if let locAdv = p.locationAdvantages, !locAdv.isEmpty { locationAdvantagesSection(locAdv) }
+                        if let locAdv = p.locationAdvantages, !locAdv.isEmpty {
+                            LocationAdvantagesSection(items: locAdv)
+                        }
                         section("Home Loan Calculator") { LoanCalculator(price: p.priceMin ?? p.priceMax ?? 50_00_000) }
                         if let specs = p.specifications { specificationsSection(specs) }
                         if let plans = p.paymentPlans, !plans.isEmpty { paymentPlansSection(plans) }
-                        builderSection
+                        // Closes the page, and is the same panel the builder sees
+                        // on their own project detail — see `ProjectSections`.
+                        DeveloperPanel(project: p)
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 100)
@@ -283,7 +287,7 @@ struct CustomerProjectDetailView: View {
             p.totalUnits.map { ("square.grid.2x2", "Total Homes", "\($0)") },
             p.towers.map { ("building.2", "Towers", "\($0)") },
             p.floorsPerTower.map { ("stairs", "Floors", "G+\($0)") },
-            p.possessionDate.map { ("calendar", "Possession", String($0.prefix(7))) },
+            p.possessionDate.map { ("calendar", "Possession", Self.possessionText($0)) },
             p.configurations.flatMap { !$0.isEmpty ? ("house", "Types", $0.joined(separator: " · ")) : nil },
             p.landArea.map { ("map", "Land Area", $0) },
         ].compactMap { $0 }
@@ -296,14 +300,35 @@ struct CustomerProjectDetailView: View {
                         .background(.brandTeal.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
                         .foregroundStyle(.brandTeal)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(value).font(.subheadline.weight(.semibold))
-                        Text(label).font(.caption2).foregroundStyle(.secondary)
+                        Text(value)
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        Text(label).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                     }
                     Spacer(minLength: 0)
                 }
                 .padding(12).cardSurface()
             }
         }
+    }
+
+    /// The backend has shipped possession as both a human label ("Dec 2027") and
+    /// an ISO date. A flat `prefix(7)` handled the second and cut the year off
+    /// the first — the tile read "Dec 202".
+    private static func possessionText(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        // "2027-12-31" / "2027-12-31T00:00:00Z" → "Dec 2027".
+        if trimmed.count >= 7, trimmed.prefix(4).allSatisfy(\.isNumber),
+           trimmed.dropFirst(4).first == "-" {
+            let year = String(trimmed.prefix(4))
+            let monthIndex = Int(trimmed.dropFirst(5).prefix(2)) ?? 0
+            let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+            if (1...12).contains(monthIndex) { return "\(months[monthIndex - 1]) \(year)" }
+            return year
+        }
+        return trimmed
     }
 
     // MARK: - Availability bar
@@ -589,43 +614,6 @@ struct CustomerProjectDetailView: View {
 
     // MARK: - Location advantages
 
-    private func locationAdvantagesSection(_ items: [LocationAdvantage]) -> some View {
-        section("Location Advantages") {
-            VStack(spacing: 0) {
-                ForEach(Array(items.enumerated()), id: \.offset) { idx, la in
-                    HStack(spacing: 12) {
-                        Image(systemName: locIcon(la.category ?? ""))
-                            .font(.system(size: 16))
-                            .foregroundStyle(.brandTeal)
-                            .frame(width: 32)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(la.name ?? "").font(.subheadline.weight(.medium))
-                            if let cat = la.category { Text(cat).font(.caption2).foregroundStyle(.secondary) }
-                        }
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 2) {
-                            if let d = la.distanceKm { Text(d + " km").font(.caption.weight(.semibold)) }
-                            if let m = la.driveMinutes { Text(m + " min").font(.caption2).foregroundStyle(.secondary) }
-                        }
-                    }
-                    .padding(.vertical, 10)
-                    if idx < items.count - 1 { Divider() }
-                }
-            }
-            .padding(.horizontal, 14).cardSurface()
-        }
-    }
-
-    private func locIcon(_ cat: String) -> String {
-        let s = cat.lowercased()
-        if s.contains("hospital") || s.contains("health") { return "cross.case.fill" }
-        if s.contains("school") || s.contains("education") { return "graduationcap.fill" }
-        if s.contains("transit") || s.contains("metro") || s.contains("station") { return "tram.fill" }
-        if s.contains("mall") || s.contains("shop") { return "bag.fill" }
-        if s.contains("park") { return "leaf.fill" }
-        return "mappin.circle.fill"
-    }
-
     // MARK: - Specifications
 
     private func specificationsSection(_ specs: Specifications) -> some View {
@@ -687,34 +675,6 @@ struct CustomerProjectDetailView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-        }
-    }
-
-    // MARK: - Builder section
-
-    private var builderSection: some View {
-        section("Developer") {
-            VStack(spacing: 0) {
-                let rows: [(String, String?)] = [
-                    ("Builder", p.builderName),
-                    ("Established", p.builderYearEstablished.map { String($0) }),
-                    ("Delivered Projects", p.builderDeliveredProjects.map { "\($0) projects" }),
-                    ("RERA No.", p.reraNumber),
-                    ("RERA Expiry", p.reraExpiry.map { String($0.prefix(10)) }),
-                    ("Status", p.status?.replacingOccurrences(of: "_", with: " ").capitalized),
-                ].filter { $0.1 != nil }
-
-                ForEach(Array(rows.enumerated()), id: \.offset) { idx, row in
-                    HStack {
-                        Text(row.0).font(.caption).foregroundStyle(.secondary).frame(width: 120, alignment: .leading)
-                        Text(row.1!).font(.caption.weight(.semibold))
-                        Spacer()
-                    }
-                    .padding(.vertical, 9)
-                    if idx < rows.count - 1 { Divider() }
-                }
-            }
-            .padding(.horizontal, 14).cardSurface()
         }
     }
 

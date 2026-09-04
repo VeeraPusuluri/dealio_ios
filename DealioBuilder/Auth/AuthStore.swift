@@ -25,7 +25,15 @@ final class AuthStore: ObservableObject {
     /// The user's phone — the key the customer portal endpoints are keyed by.
     var phone: String { user?.phone ?? "" }
 
+    /// Set while a 401-triggered sign-out is on screen, so the login screen can
+    /// say why the user is looking at it.
+    @Published var expiryNotice: String?
+
+    private var expiryObserver: NSObjectProtocol?
+    private var renewalObserver: NSObjectProtocol?
+
     private let tokenKey = "dealio_access_token"
+    private let refreshTokenKey = "dealio_refresh_token"
     private let userKey = "dealio_user"
     private let builderIdKey = "dealio_builder_id"
 
@@ -33,13 +41,23 @@ final class AuthStore: ObservableObject {
         didSet { APIClient.shared.authToken = accessToken }
     }
 
+    /// Kept beside the access token so a rejected session can be renewed rather
+    /// than ended — see `APIClient.performRenewingIfRejected`.
+    private var refreshToken: String? {
+        didSet { APIClient.shared.refreshToken = refreshToken }
+    }
+
     init() {
+        // Under `-uitest` this installs the stub transport and the seeded (or
+        // cleared) session before the restore below reads it. A no-op otherwise.
+        UITestSupport.installIfNeeded()
         let defaults = UserDefaults.standard
         if let token = defaults.string(forKey: tokenKey),
            let userData = defaults.data(forKey: userKey),
            let savedUser = try? JSONDecoder().decode(AuthUser.self, from: userData) {
             self.accessToken = token
             APIClient.shared.authToken = token
+            self.refreshToken = defaults.string(forKey: refreshTokenKey)
             self.user = savedUser
             if defaults.object(forKey: builderIdKey) != nil {
                 self.builderId = defaults.integer(forKey: builderIdKey)
@@ -48,6 +66,46 @@ final class AuthStore: ObservableObject {
             // Re-register the device for push on a restored session.
             Task { await PushRegistrar.shared.registerIfPossible() }
         }
+        observeExpiry()
+        observeRenewal()
+    }
+
+    /// A rejected token ends the session here rather than leaving each screen to
+    /// show "your session has expired" over a portal the user can no longer use.
+    private func observeExpiry() {
+        expiryObserver = NotificationCenter.default.addObserver(
+            forName: .sessionExpired, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.isAuthenticated else { return }
+                self.logout()
+                self.expiryNotice = "Your session expired. Please sign in again."
+            }
+        }
+    }
+
+    /// A renewed pair is persisted here, where the session keys live. Without
+    /// this the app would renew once per launch instead of once per rejection.
+    private func observeRenewal() {
+        renewalObserver = NotificationCenter.default.addObserver(
+            forName: .sessionRenewed, object: nil, queue: .main
+        ) { [weak self] note in
+            Task { @MainActor in
+                guard let self, self.isAuthenticated else { return }
+                if let token = note.userInfo?["accessToken"] as? String, !token.isEmpty {
+                    self.accessToken = token
+                }
+                if let token = note.userInfo?["refreshToken"] as? String, !token.isEmpty {
+                    self.refreshToken = token
+                }
+                self.persistSession()
+            }
+        }
+    }
+
+    deinit {
+        if let expiryObserver { NotificationCenter.default.removeObserver(expiryObserver) }
+        if let renewalObserver { NotificationCenter.default.removeObserver(renewalObserver) }
     }
 
     // MARK: Request bodies
@@ -155,7 +213,9 @@ final class AuthStore: ObservableObject {
 
     /// Stores the session and resolves the builder profile (non-fatal for non-builders).
     private func finishAuth(_ data: AuthData) async throws {
+        self.expiryNotice = nil
         self.accessToken = data.accessToken
+        self.refreshToken = data.refreshToken
         self.user = data.user
         persistSession()
         self.isAuthenticated = true
@@ -209,11 +269,13 @@ final class AuthStore: ObservableObject {
         // it must not open on whoever signs in next.
         DeepLinkCenter.shared.clear()
         accessToken = nil
+        refreshToken = nil
         user = nil
         builderId = nil
         isAuthenticated = false
         let defaults = UserDefaults.standard
         defaults.removeObject(forKey: tokenKey)
+        defaults.removeObject(forKey: refreshTokenKey)
         defaults.removeObject(forKey: userKey)
         defaults.removeObject(forKey: builderIdKey)
     }
@@ -221,6 +283,11 @@ final class AuthStore: ObservableObject {
     private func persistSession() {
         let defaults = UserDefaults.standard
         defaults.set(accessToken, forKey: tokenKey)
+        if let refreshToken {
+            defaults.set(refreshToken, forKey: refreshTokenKey)
+        } else {
+            defaults.removeObject(forKey: refreshTokenKey)
+        }
         if let user, let data = try? JSONEncoder().encode(user) {
             defaults.set(data, forKey: userKey)
         }

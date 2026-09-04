@@ -112,14 +112,13 @@ struct CPDealDetailView: View {
     var title: String = "Lead"
 
     @EnvironmentObject private var auth: AuthStore
+    @EnvironmentObject private var router: PortalRouter
     @Environment(\.openURL) private var openURL
     @StateObject private var model = CPDealDetailModel()
 
     @State private var showFollowUp = false
     @State private var showCallLog = false
     @State private var showBooking = false
-    @State private var goConversations = false
-    @State private var goEarnings = false
 
     /// When the baton is genuinely on the CP to agree, the spine owns that action
     /// — one primary CTA per screen. Everywhere else agreeing is still possible
@@ -152,8 +151,6 @@ struct CPDealDetailView: View {
         .navigationTitle(model.deal?.projectName.nilIfEmpty ?? title)
         .navigationBarTitleDisplayMode(.inline)
         .task { await reload() }
-        .navigationDestination(isPresented: $goConversations) { CPConversationsView() }
-        .navigationDestination(isPresented: $goEarnings) { CPEarningsView() }
         .sheet(isPresented: $showFollowUp) {
             DealFollowUpSheet(working: model.working) { date, time, reason in
                 showFollowUp = false
@@ -211,7 +208,10 @@ struct CPDealDetailView: View {
                     case .requestVisit: showBooking = true
                     case .logFollowUp: showFollowUp = true
                     case .agree: Task { await model.agree() }
-                    case .cpCommissions: goEarnings = true
+                    // Earnings is a tab root with its own stack, so it is
+                    // switched to rather than pushed — nesting one
+                    // NavigationStack inside another breaks both.
+                    case .cpCommissions: router.open(.tab(3))
                     default: break
                     }
                 }
@@ -225,7 +225,7 @@ struct CPDealDetailView: View {
                     }
                 }
 
-                outlineButton("Message", .brandTeal, icon: "bubble.left") { goConversations = true }
+                outlineButton("Message", .brandTeal, icon: "bubble.left") { router.open(.cpConversations) }
 
                 HStack(spacing: 10) {
                     outlineButton("Follow-up", .dealioNavy, icon: "calendar.badge.clock") { showFollowUp = true }

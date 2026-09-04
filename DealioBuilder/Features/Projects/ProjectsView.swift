@@ -13,13 +13,26 @@ struct ProjectsView: View {
                 if loading && projects.isEmpty {
                     LoadingList(rows: 4) { ProjectRow.placeholder }
                 } else if let errorMessage, projects.isEmpty {
-                    ScrollView { ErrorBanner(message: errorMessage).padding() }
+                    ScrollView {
+                        VStack(spacing: 14) {
+                            ErrorBanner(message: errorMessage)
+                            Button("Try again") { Task { await load() } }
+                                .buttonStyle(.borderedProminent).tint(.brandTeal)
+                        }
+                        .padding()
+                    }
                 } else if projects.isEmpty {
-                    ContentUnavailableView(
-                        "No projects yet",
-                        systemImage: "building.2",
-                        description: Text("Projects you add on the web appear here.")
-                    )
+                    ContentUnavailableView {
+                        Label("No projects yet", systemImage: "building.2")
+                    } description: {
+                        Text("Add your first project and it appears here for buyers and partners.")
+                    } actions: {
+                        NavigationLink(value: PortalRoute.builderProjectForm(nil)) {
+                            Text("Add a project")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.brandTeal)
+                    }
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 12) {
@@ -28,29 +41,37 @@ struct ProjectsView: View {
                                     ProjectRow(project: project)
                                         .padding(12)
                                         .cardSurface()
+                                        .contentShape(Rectangle())
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(.pressable)
                             }
                         }
                         .padding()
                     }
-                    .navigationDestination(for: Project.self) { ProjectDetailView(project: $0) }
                 }
             }
             .background(Color(.systemGroupedBackground))
+            // Declared on the stack root, not inside the populated branch: a
+            // `navigationDestination` that only exists while the list is
+            // non-empty is unregistered the moment a refresh empties it, and the
+            // push it was serving is dropped.
+            .navigationDestination(for: Project.self) { ProjectDetailView(project: $0) }
             .portalDestinations()
             .navigationTitle("Projects")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        BuilderProjectFormView(projectId: nil) { Task { await load() } }
-                    } label: {
+                    NavigationLink(value: PortalRoute.builderProjectForm(nil)) {
                         Label("New project", systemImage: "plus")
                     }
                 }
             }
             .refreshable { await load() }
             .task { await load() }
+            // The form is pushed by value now, so it cannot hand back a
+            // completion closure — it announces a save instead.
+            .onReceive(NotificationCenter.default.publisher(for: .projectSaved)) { _ in
+                Task { await load() }
+            }
         }
     }
 

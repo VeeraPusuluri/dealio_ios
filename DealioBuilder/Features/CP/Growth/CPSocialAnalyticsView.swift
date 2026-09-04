@@ -13,7 +13,7 @@ struct CPSocialAnalyticsView: View {
 
     private var total: Int { model.leads.count }
     private var booked: Int { model.leads.filter { $0.status == "Booked" }.count }
-    private var active: Int { model.leads.filter { ($0.status ?? "") != "Booked" && ($0.status ?? "") != "Closed" }.count }
+    private var active: Int { model.leads.filter { $0.status != "Booked" && $0.status != "Closed" }.count }
     private var conversion: String { total > 0 ? String(format: "%.0f%%", Double(booked) / Double(total) * 100) : "0%" }
 
     private var trend: [MonthPoint] {
@@ -22,7 +22,7 @@ struct CPSocialAnalyticsView: View {
         return (0..<6).reversed().compactMap { back -> MonthPoint? in
             guard let date = cal.date(byAdding: .month, value: -back, to: Date()) else { return nil }
             let key = monthKey(date)
-            let count = model.leads.filter { ($0.createdAt ?? "").hasPrefix(key) }.count
+            let count = model.leads.filter { $0.createdAt.hasPrefix(key) }.count
             return MonthPoint(label: fmt.string(from: date), count: count)
         }
     }

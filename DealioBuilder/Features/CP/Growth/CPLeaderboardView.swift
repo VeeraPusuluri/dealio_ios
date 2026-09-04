@@ -9,9 +9,9 @@ struct CPLeaderboardView: View {
     private var bookedTotal: Int { model.leads.filter { $0.status == "Booked" }.count }
     private var bookedMonth: Int {
         let ym = monthKey(Date())
-        return model.leads.filter { $0.status == "Booked" && ($0.createdAt ?? "").hasPrefix(ym) }.count
+        return model.leads.filter { $0.status == "Booked" && $0.createdAt.hasPrefix(ym) }.count
     }
-    private var activeLeads: Int { model.leads.filter { ($0.status ?? "") != "Booked" && ($0.status ?? "") != "Closed" }.count }
+    private var activeLeads: Int { model.leads.filter { $0.status != "Booked" && $0.status != "Closed" }.count }
     private var totalEarnings: Double { model.leads.filter { $0.status == "Booked" }.reduce(0) { $0 + ($1.estimatedCommission ?? 0) } }
     private var tier: String { bookedTotal >= 20 ? "Platinum" : bookedTotal >= 10 ? "Gold" : bookedTotal >= 5 ? "Silver" : "Bronze" }
 

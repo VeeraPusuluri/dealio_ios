@@ -12,7 +12,6 @@ struct CustomerLoansView: View {
     @EnvironmentObject private var auth: AuthStore
     @StateObject private var model = CustomerDealsModel()
 
-    @State private var applying = false
 
     /// Only the deals that actually have a loan case behind them.
     private var loans: [CustomerDeal] { model.deals.filter { $0.loanCaseId != nil } }
@@ -33,11 +32,11 @@ struct CustomerLoansView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         HStack(spacing: 12) {
-                            NavigationLink { CustomerEMIView() } label: {
+                            NavigationLink(value: PortalRoute.customerEMI) {
                                 toolTile("EMI Calculator", "Charts & full schedule", "function")
                             }
                             .buttonStyle(.plain)
-                            NavigationLink { CustomerLoanEligibilityView() } label: {
+                            NavigationLink(value: PortalRoute.customerEligibility) {
                                 toolTile("Eligibility", "Compare bank offers", "building.columns")
                             }
                             .buttonStyle(.plain)
@@ -76,11 +75,10 @@ struct CustomerLoansView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { applying = true } label: { Label("Apply", systemImage: "plus") }
+                NavigationLink(value: PortalRoute.customerLoanApply(projectId: nil, builderId: nil)) {
+                    Label("Apply", systemImage: "plus")
+                }
             }
-        }
-        .navigationDestination(isPresented: $applying) {
-            CustomerLoanApplyView(projectId: nil, builderId: nil)
         }
         .task { await model.load(phone: auth.phone) }
     }

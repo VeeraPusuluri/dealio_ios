@@ -1,5 +1,94 @@
 import SwiftUI
 
+/// Everything the profile menu can open.
+///
+/// The rows used to be `NavigationLink { CustomerLoansView() }`. Outside a
+/// `List`, SwiftUI builds that trailing closure for **every** row as soon as the
+/// page renders — so opening Profile constructed thirteen screens at once, each
+/// allocating its own `@StateObject` model, and every tap then waited behind
+/// that work. Routing by value builds exactly one screen, when it is pushed.
+enum CustomerProfileRoute: Hashable, CaseIterable {
+    case properties, loans, emi, eligibility, topup, investments
+    case documents, conversations, possession, snagging, contact, notifications, meetups
+
+    var title: String {
+        switch self {
+        case .properties: return "My properties"
+        case .loans: return "Home loans"
+        case .emi: return "EMI calculator"
+        case .eligibility: return "Loan eligibility"
+        case .topup: return "Loan top-up"
+        case .investments: return "Investments"
+        case .documents: return "Documents"
+        case .conversations: return "Conversations"
+        case .possession: return "Possession tracker"
+        case .snagging: return "Snagging report"
+        case .contact: return "Contact us"
+        case .notifications: return "Notifications"
+        case .meetups: return "Meetups near you"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .properties: return "house.fill"
+        case .loans: return "indianrupeesign.circle.fill"
+        case .emi: return "function"
+        case .eligibility: return "checkmark.seal.fill"
+        case .topup: return "plus.rectangle.on.folder.fill"
+        case .investments: return "chart.line.uptrend.xyaxis"
+        case .documents: return "doc.text.fill"
+        case .conversations: return "bubble.left.and.bubble.right.fill"
+        case .possession: return "house.lodge.fill"
+        case .snagging: return "wrench.and.screwdriver.fill"
+        case .contact: return "headphones"
+        case .notifications: return "bell.fill"
+        case .meetups: return "person.3.fill"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .properties: return .blue
+        case .loans: return .green
+        case .emi: return .indigo
+        case .eligibility: return .teal
+        case .topup: return .orange
+        case .investments: return .purple
+        case .documents: return .blue
+        case .conversations: return .teal
+        case .possession: return .orange
+        case .snagging: return .red
+        case .contact: return .green
+        case .notifications: return .pink
+        case .meetups: return .purple
+        }
+    }
+
+    @ViewBuilder var destination: some View {
+        switch self {
+        case .properties: CustomerPropertyView()
+        case .loans: CustomerLoansView()
+        case .emi: CustomerEMIView()
+        case .eligibility: CustomerLoanEligibilityView()
+        case .topup: CustomerTopupView()
+        case .investments: CustomerInvestmentsView()
+        case .documents: CustomerDocumentsView()
+        case .conversations: CustomerConversationsView()
+        case .possession: CustomerPossessionView()
+        case .snagging: CustomerSnaggingView()
+        case .contact: CustomerContactView()
+        case .notifications: CustomerNotificationsView()
+        case .meetups: CustomerMeetupsView()
+        }
+    }
+
+    static let homeAndFinance: [CustomerProfileRoute] =
+        [.properties, .loans, .emi, .eligibility, .topup, .investments]
+    static let documentsAndSupport: [CustomerProfileRoute] =
+        [.documents, .conversations, .possession, .snagging, .contact, .notifications, .meetups]
+}
+
 struct CustomerProfileView: View {
     @EnvironmentObject private var router: PortalRouter
     @EnvironmentObject private var auth: AuthStore
@@ -9,55 +98,25 @@ struct CustomerProfileView: View {
 
     var body: some View {
         NavigationStack(path: router.path(4)) {
-            GeometryReader { geo in
             ScrollView {
                 VStack(spacing: 18) {
-                    header(topInset: geo.safeAreaInsets.top)
+                    header
 
-                    // Home & finance
-                    section("Home & finance") {
-                        ProfileRow("My properties", "house.fill", .blue) { CustomerPropertyView() }
-                        divider
-                        ProfileRow("Home loans", "indianrupeesign.circle.fill", .green) { CustomerLoansView() }
-                        divider
-                        ProfileRow("EMI calculator", "function", .indigo) { CustomerEMIView() }
-                        divider
-                        ProfileRow("Loan eligibility", "checkmark.seal.fill", .teal) { CustomerLoanEligibilityView() }
-                        divider
-                        ProfileRow("Loan top-up", "plus.rectangle.on.folder.fill", .orange) { CustomerTopupView() }
-                        divider
-                        ProfileRow("Investments", "chart.line.uptrend.xyaxis", .purple) { CustomerInvestmentsView() }
-                    }
-
-                    // Documents & support
-                    section("Documents & support") {
-                        ProfileRow("Documents", "doc.text.fill", .blue) { CustomerDocumentsView() }
-                        divider
-                        ProfileRow("Conversations", "bubble.left.and.bubble.right.fill", .teal) { CustomerConversationsView() }
-                        divider
-                        ProfileRow("Possession tracker", "house.lodge.fill", .orange) { CustomerPossessionView() }
-                        divider
-                        ProfileRow("Snagging report", "wrench.and.screwdriver.fill", .red) { CustomerSnaggingView() }
-                        divider
-                        ProfileRow("Contact us", "headphones", .green) { CustomerContactView() }
-                        divider
-                        ProfileRow("Notifications", "bell.fill", .pink) { CustomerNotificationsView() }
-                        divider
-                        ProfileRow("Meetups near you", "person.3.fill", .purple) { CustomerMeetupsView() }
-                    }
+                    section("Home & finance", routes: CustomerProfileRoute.homeAndFinance)
+                    section("Documents & support", routes: CustomerProfileRoute.documentsAndSupport)
 
                     // Security
-                    section("Security") {
-                        AppLockToggle()
-                    }
+                    sectionShell("Security") { AppLockToggle() }
 
                     Button(role: .destructive) { auth.logout() } label: {
                         Label("Log out", systemImage: "rectangle.portrait.and.arrow.right")
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(Color.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .background(Color.red.opacity(0.1),
+                                        in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
+                    .buttonStyle(.pressable)
                     .padding(.horizontal)
 
                     DealioLogo(markSize: 26, fontSize: 15)
@@ -66,9 +125,9 @@ struct CustomerProfileView: View {
                 }
                 .padding(.bottom, 30)
             }
-            .background(Color.dealioMist.ignoresSafeArea())
-            .ignoresSafeArea(.container, edges: .top)
-            }
+            .dealioPageBackground(.customerSurface)
+            .heroScrollEdges()
+            .navigationDestination(for: CustomerProfileRoute.self) { $0.destination }
             .portalDestinations()
             .navigationBarHidden(true)
         }
@@ -76,9 +135,9 @@ struct CustomerProfileView: View {
 
     // MARK: Header
 
-    private func header(topInset: CGFloat) -> some View {
+    private var header: some View {
         VStack(spacing: 14) {
-            AccountAvatar(size: 76, tint: .dealioTealBright)
+            AccountAvatar(size: 76, tint: .customerAccentBright)
 
             VStack(spacing: 3) {
                 Text(displayName)
@@ -97,14 +156,12 @@ struct CustomerProfileView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, topInset + 20)
+        .padding(.top, SafeArea.top + 20)
         .padding(.bottom, 24)
         .padding(.horizontal, 20)
-        .background(
-            LinearGradient(colors: [.dealioNavyDeep, .dealioNavyMid, .dealioTealDeep],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-        )
-        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 28, bottomTrailingRadius: 28, style: .continuous))
+        .background(BrandHeaderBackground())
+        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 28, bottomTrailingRadius: 28,
+                                          style: .continuous))
     }
 
     private func chip(_ systemImage: String, _ text: String) -> some View {
@@ -119,11 +176,24 @@ struct CustomerProfileView: View {
 
     // MARK: Section helpers
 
-    private func section<Content: View>(_ title: String, @ViewBuilder _ content: () -> Content) -> some View {
+    private func section(_ title: String, routes: [CustomerProfileRoute]) -> some View {
+        sectionShell(title) {
+            ForEach(Array(routes.enumerated()), id: \.element) { index, route in
+                NavigationLink(value: route) { ProfileRowLabel(route: route) }
+                    .buttonStyle(.plain)
+                if index < routes.count - 1 {
+                    Divider().padding(.leading, 42)
+                }
+            }
+        }
+    }
+
+    private func sectionShell<Content: View>(_ title: String,
+                                             @ViewBuilder _ content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title.uppercased())
                 .font(.caption.weight(.bold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.dealioTextSecondary)
                 .tracking(0.6)
                 .padding(.leading, 4)
             VStack(spacing: 0) { content() }
@@ -132,39 +202,32 @@ struct CustomerProfileView: View {
         }
         .padding(.horizontal)
     }
-
-    private var divider: some View {
-        Divider().padding(.leading, 42)
-    }
 }
 
-/// A profile menu row with a coloured icon tile that pushes a destination.
-private struct ProfileRow<Destination: View>: View {
-    let label: String
-    let systemImage: String
-    let tint: Color
-    @ViewBuilder let destination: () -> Destination
-
-    init(_ label: String, _ systemImage: String, _ tint: Color, @ViewBuilder destination: @escaping () -> Destination) {
-        self.label = label; self.systemImage = systemImage; self.tint = tint; self.destination = destination
-    }
+/// The visual half of a profile menu row. Separate from the link so the row can
+/// be pushed by value.
+private struct ProfileRowLabel: View {
+    let route: CustomerProfileRoute
 
     var body: some View {
-        NavigationLink {
-            destination()
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 30, height: 30)
-                    .background(tintGradient(tint), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                Text(label).font(.subheadline.weight(.medium)).foregroundStyle(.primary)
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
-            }
-            .padding(.vertical, 11)
+        HStack(spacing: 12) {
+            Image(systemName: route.icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(tintGradient(route.tint),
+                            in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            Text(route.title)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.dealioTextPrimary)
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.dealioTextSecondary.opacity(0.6))
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
     }
 }

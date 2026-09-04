@@ -31,7 +31,7 @@ struct FloatingTabBar: View {
         .padding(.vertical, 9)
         .background(
             Capsule(style: .continuous)
-                .fill(.white)
+                .fill(Color.dealioSurface)
                 .shadow(color: .black.opacity(0.14), radius: 16, x: 0, y: 6)
         )
         .padding(.horizontal, 16)
@@ -68,13 +68,21 @@ private struct FloatingTabPill: View {
 
                 Text(label)
                     .font(.system(size: 11, weight: selected ? .semibold : .regular))
-                    .foregroundStyle(selected ? Color.dealioNavy : Color.dealioTextSecondary)
+                    // `dealioTextPrimary`, not the fixed `dealioNavy`: navy on the
+                    // dark tab surface left the selected label unreadable.
+                    .foregroundStyle(selected ? Color.dealioTextPrimary : Color.dealioTextSecondary)
                     .fixedSize()
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // A stable handle for the tab itself: several screens carry a control
+        // with the same words as their tab ("Projects" is both a tab and a
+        // quick action), and the label alone cannot tell them apart.
+        .accessibilityIdentifier("tab.\(label)")
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
 }
 

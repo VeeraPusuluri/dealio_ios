@@ -1,9 +1,9 @@
 import SwiftUI
 
 struct ProjectDetailView: View {
+    @EnvironmentObject private var router: PortalRouter
     let project: Project
 
-    @State private var editing = false
 
     var body: some View {
         ScrollView {
@@ -39,6 +39,15 @@ struct ProjectDetailView: View {
                     InfoTile(label: "RERA", value: project.reraNumber ?? "—", systemImage: "checkmark.shield.fill", tint: .blue)
                     InfoTile(label: "Possession", value: project.possessionDate ?? "—", systemImage: "calendar", tint: .pink)
                 }
+
+                // The same two blocks the buyer and the partner see. The builder
+                // types both into the project form and, until now, had nowhere to
+                // read them back — so a wrong distance or a stale developer bio
+                // was only ever visible to the people it was wrong for.
+                if let advantages = project.locationAdvantages, !advantages.isEmpty {
+                    LocationAdvantagesSection(items: advantages)
+                }
+                DeveloperPanel(project: project)
             }
             .padding()
         }
@@ -46,9 +55,6 @@ struct ProjectDetailView: View {
         .navigationTitle("Project")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { projectActions }
-        .navigationDestination(isPresented: $editing) {
-            BuilderProjectFormView(projectId: project.id)
-        }
     }
 
     @ViewBuilder private var cover: some View {
@@ -99,11 +105,11 @@ struct ProjectDetailView: View {
     private var projectActions: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
-                Button("Edit project", systemImage: "pencil") { editing = true }
-                NavigationLink {
-                    BuilderProjectDocumentsView(project: project)
-                } label: {
-                    Label("Documents", systemImage: "folder")
+                Button("Edit project", systemImage: "pencil") {
+                    router.open(.builderProjectForm(project.id))
+                }
+                Button("Documents", systemImage: "folder") {
+                    router.open(.builderProjectDocuments(project.id))
                 }
             } label: {
                 Image(systemName: "ellipsis.circle")

@@ -10,10 +10,10 @@ import SwiftUI
 // MARK: - Status palette
 
 extension Color {
-    static let dealioStatusGreen = Color(hex: 0x059669)
-    static let dealioStatusGreenBg = Color(hex: 0xE8F6F1)
-    static let dealioStatusAmber = Color(hex: 0xD97706)
-    static let dealioStatusAmberBg = Color(hex: 0xFDF3E7)
+    static let dealioStatusGreen = Color.adaptive(light: 0x059669, dark: 0x34D399)
+    static let dealioStatusGreenBg = Color.adaptive(light: 0xE8F6F1, dark: 0x0F2A22)
+    static let dealioStatusAmber = Color.adaptive(light: 0xD97706, dark: 0xFBBF24)
+    static let dealioStatusAmberBg = Color.adaptive(light: 0xFDF3E7, dark: 0x2E220C)
 }
 
 // MARK: - PhaseTrack

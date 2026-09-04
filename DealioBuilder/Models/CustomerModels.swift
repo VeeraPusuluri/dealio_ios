@@ -70,8 +70,10 @@ extension Color {
     static let customerAccentBright = Color(hex: 0xC9A227)
     /// Pressed and depth states under `customerAccent`.
     static let customerAccentDeep = Color(hex: 0x7C5510)
-    /// The page field behind the white cards — warm, where `dealioMist` is cool.
-    static let customerSurface = Color(hex: 0xFAF8F3)
+    /// The page field behind the cards — warm, where `dealioMist` is cool.
+    /// Dark keeps the warmth as a brown-leaning charcoal rather than reusing the
+    /// cool `dealioMist`, so the buyer portal stays a different room at night too.
+    static let customerSurface = Color.adaptive(light: 0xFAF8F3, dark: 0x131110)
 }
 
 /// A site-visit / meeting — the `portal/customer/meetings` shape.

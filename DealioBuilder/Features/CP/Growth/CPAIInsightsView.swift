@@ -23,7 +23,7 @@ private struct ScoredLead: Identifiable {
 }
 
 private func score(_ lead: CpLead) -> ScoredLead {
-    let base = statusScore[lead.status ?? ""] ?? 20
+    let base = statusScore[lead.status] ?? 20
     let days = daysSince(lead.createdAt)
     let decay = min(Double(days) * 0.5, 20)
     let s = max(5, Int((Double(base) - decay).rounded()))
@@ -77,17 +77,17 @@ struct CPAIInsightsView: View {
         VStack(alignment: .leading, spacing: 10) {
             Button { withAnimation(.snappy) { expanded = expanded == s.id ? nil : s.id } } label: {
                 HStack(spacing: 12) {
-                    Text(String((s.lead.customerName ?? "?").prefix(1)).uppercased())
+                    Text(String((s.lead.customerName.nilIfEmpty ?? "?").prefix(1)).uppercased())
                         .font(.headline).foregroundStyle(s.color).frame(width: 40, height: 40)
                         .background(s.color.opacity(0.15), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                     VStack(alignment: .leading, spacing: 3) {
                         HStack {
-                            Text(s.lead.customerName ?? "Lead").font(.subheadline.weight(.semibold))
+                            Text(s.lead.customerName.nilIfEmpty ?? "Lead").font(.subheadline.weight(.semibold))
                             Text("\(s.score) · \(s.label)").font(.caption2.weight(.bold))
                                 .padding(.horizontal, 7).padding(.vertical, 2)
                                 .background(s.color.opacity(0.15), in: Capsule()).foregroundStyle(s.color)
                         }
-                        Text("\(s.lead.projectName ?? "—") · \(s.lead.status ?? "")").font(.caption).foregroundStyle(.secondary)
+                        Text("\(s.lead.projectName.nilIfEmpty ?? "—") · \(s.lead.status)").font(.caption).foregroundStyle(.secondary)
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
                                 Capsule().fill(Color(.tertiarySystemFill)).frame(height: 5)
@@ -101,7 +101,7 @@ struct CPAIInsightsView: View {
             .buttonStyle(.plain)
 
             if expanded == s.id {
-                if let action = nextAction[s.lead.status ?? ""] {
+                if let action = nextAction[s.lead.status] {
                     HStack(alignment: .top, spacing: 8) {
                         Image(systemName: "bolt.fill").foregroundStyle(.brandTeal).font(.caption)
                         VStack(alignment: .leading, spacing: 2) {

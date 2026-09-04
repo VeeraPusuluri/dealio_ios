@@ -141,17 +141,35 @@ struct SavedView: View {
                     .foregroundStyle(Color.dealioTextSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if let price = shortlist.unitDetails?.price?.nilIfEmpty {
-                Text(price).font(.footnote.weight(.semibold)).foregroundStyle(Color.customerAccent)
-            } else {
-                Button { Task { await model.requestPricing(shortlist, phone: auth.phone) } } label: {
-                    Label("Ask for a price", systemImage: "indianrupeesign.circle")
-                        .font(.caption.weight(.semibold))
+            // Pricing and "open the project" are two separate taps rather than a
+            // whole-card link with a button inside it, which on iOS fires
+            // whichever of the two the finger lands nearest.
+            HStack(spacing: 8) {
+                if let price = shortlist.unitDetails?.price?.nilIfEmpty {
+                    Text(price).font(.footnote.weight(.semibold)).foregroundStyle(Color.customerAccent)
+                } else {
+                    Button { Task { await model.requestPricing(shortlist, phone: auth.phone) } } label: {
+                        Label("Ask for a price", systemImage: "indianrupeesign.circle")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.customerAccent)
+                            .padding(.horizontal, 12).padding(.vertical, 7)
+                            .background(Color.customerAccent.opacity(0.10), in: Capsule())
+                    }
+                    .buttonStyle(.pressable)
+                }
+                Spacer(minLength: 0)
+                if shortlist.projectId > 0 {
+                    NavigationLink(value: PortalRoute.customerProjectDetail(shortlist.projectId)) {
+                        HStack(spacing: 4) {
+                            Text("View project").font(.caption.weight(.semibold))
+                            Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold))
+                        }
                         .foregroundStyle(Color.customerAccent)
                         .padding(.horizontal, 12).padding(.vertical, 7)
-                        .background(Color.customerAccent.opacity(0.10), in: Capsule())
+                        .overlay(Capsule().strokeBorder(Color.customerAccent.opacity(0.35), lineWidth: 1))
+                    }
+                    .buttonStyle(.pressable)
                 }
-                .buttonStyle(.plain)
             }
         }
         .padding(14)

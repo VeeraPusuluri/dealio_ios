@@ -8,28 +8,28 @@ struct CPMoreView: View {
         NavigationStack(path: router.path(4)) {
             List {
                 Section("CRM") {
-                    CPNavRow("Conversations", "bubble.left.and.bubble.right", .blue) { CPConversationsView() }
-                    CPNavRow("Contacts", "person.crop.circle.badge.plus", .teal) { CPContactsView() }
-                    CPNavRow("Follow-ups", "bell.badge", .orange) { CPFollowUpsView() }
-                    CPNavRow("Site visits", "calendar", .red) { CPMeetingsView() }
-                    CPNavRow("Call logs", "phone.badge.checkmark", .indigo) { CPCallLogsView() }
-                    CPNavRow("Meetups", "person.3.sequence", .pink) { CPMeetupsView() }
+                    CPNavRow("Conversations", "bubble.left.and.bubble.right", .blue, .cpConversations)
+                    CPNavRow("Contacts", "person.crop.circle.badge.plus", .teal, .cpContacts)
+                    CPNavRow("Follow-ups", "bell.badge", .orange, .cpFollowUps)
+                    CPNavRow("Site visits", "calendar", .red, .cpMeetings)
+                    CPNavRow("Call logs", "phone.badge.checkmark", .indigo, .cpCallLogs)
+                    CPNavRow("Meetups", "person.3.sequence", .pink, .cpMeetups)
                 }
                 Section("Grow your business") {
-                    CPNavRow("Leaderboard", "trophy", .yellow) { CPLeaderboardView() }
-                    CPNavRow("AI Lead Intelligence", "brain.head.profile", .purple) { CPAIInsightsView() }
-                    CPNavRow("Content Studio", "sparkles", .pink) { CPContentStudioView() }
-                    CPNavRow("Brochure Generator", "doc.richtext", .orange) { CPBrochureView() }
-                    CPNavRow("WhatsApp Broadcast", "megaphone", .green) { CPBroadcastView() }
-                    CPNavRow("Social Analytics", "chart.bar.xaxis", .blue) { CPSocialAnalyticsView() }
-                    CPNavRow("Referrals", "gift", .teal) { CPReferralView() }
-                    CPNavRow("Loan Assist", "indianrupeesign.circle", .indigo) { CPLoanAssistView() }
-                    CPNavRow("Community", "person.3", .mint) { CPCommunityView() }
-                    CPNavRow("JV Opportunities", "hands.sparkles", .brown) { CPJVView() }
+                    CPNavRow("Leaderboard", "trophy", .yellow, .cpLeaderboard)
+                    CPNavRow("AI Lead Intelligence", "brain.head.profile", .purple, .cpAIInsights)
+                    CPNavRow("Content Studio", "sparkles", .pink, .cpContentStudio)
+                    CPNavRow("Brochure Generator", "doc.richtext", .orange, .cpBrochure)
+                    CPNavRow("WhatsApp Broadcast", "megaphone", .green, .cpBroadcast)
+                    CPNavRow("Social Analytics", "chart.bar.xaxis", .blue, .cpSocialAnalytics)
+                    CPNavRow("Referrals", "gift", .teal, .cpReferral)
+                    CPNavRow("Loan Assist", "indianrupeesign.circle", .indigo, .cpLoanAssist)
+                    CPNavRow("Community", "person.3", .mint, .cpCommunity)
+                    CPNavRow("JV Opportunities", "hands.sparkles", .brown, .cpJV)
                 }
                 Section("Account") {
-                    CPNavRow("Notifications", "bell", .red) { CPNotificationsView() }
-                    CPNavRow("Profile & verification", "person.crop.circle", .gray) { CPProfileView() }
+                    CPNavRow("Notifications", "bell", .red, .cpNotifications)
+                    CPNavRow("Profile & verification", "person.crop.circle", .gray, .cpProfile)
                 }
                 Section {
                     Button(role: .destructive) { auth.logout() } label: {
@@ -43,20 +43,22 @@ struct CPMoreView: View {
     }
 }
 
-struct CPNavRow<Destination: View>: View {
+/// A labelled navigation row with a tinted SF Symbol badge.
+///
+/// Routed by value — see the note on the builder's `NavLink` for why a trailing
+/// destination closure breaks navigation on the screen it opens.
+struct CPNavRow: View {
     let title: String
     let systemImage: String
     let tint: Color
-    @ViewBuilder let destination: () -> Destination
+    let route: PortalRoute
 
-    init(_ title: String, _ systemImage: String, _ tint: Color, @ViewBuilder destination: @escaping () -> Destination) {
-        self.title = title; self.systemImage = systemImage; self.tint = tint; self.destination = destination
+    init(_ title: String, _ systemImage: String, _ tint: Color, _ route: PortalRoute) {
+        self.title = title; self.systemImage = systemImage; self.tint = tint; self.route = route
     }
 
     var body: some View {
-        NavigationLink {
-            destination()
-        } label: {
+        NavigationLink(value: route) {
             Label {
                 Text(title)
             } icon: {

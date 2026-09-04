@@ -24,15 +24,16 @@ struct DealsView: View {
                     ScrollView {
                         LazyVStack(spacing: 12) {
                             ForEach(deals) { deal in
-                                NavigationLink {
-                                    BuilderDealDetailView(dealId: deal.id,
-                                                          title: deal.customerName ?? "Deal")
-                                } label: {
+                                // Routed by value: a destination-based link here
+                                // opens the deal, but every value link *on* the
+                                // deal screen then stops pushing.
+                                NavigationLink(value: PortalRoute.builderDealDetail(deal.id)) {
                                     DealRow(deal: deal)
                                         .padding(16)
                                         .cardSurface()
+                                        .contentShape(Rectangle())
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(.pressable)
                             }
                         }
                         .padding()

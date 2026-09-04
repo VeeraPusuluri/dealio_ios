@@ -8,6 +8,11 @@ import UserNotifications
 class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        // Before anything reads UserDefaults or opens a socket: under `-uitest`
+        // this seeds a session and swaps the transport for fixtures. A no-op in
+        // every normal launch.
+        UITestSupport.installIfNeeded()
+
         FirebaseApp.configure()
 
         // Firebase Cloud Messaging
@@ -80,7 +85,7 @@ struct DealioBuilderApp: App {
     @StateObject private var appLock = AppLockManager()
     @StateObject private var deepLink = DeepLinkCenter.shared
     @Environment(\.scenePhase) private var scenePhase
-    @State private var showSplash = true
+    @State private var showSplash = !UITestSupport.isActive
 
     var body: some Scene {
         WindowGroup {

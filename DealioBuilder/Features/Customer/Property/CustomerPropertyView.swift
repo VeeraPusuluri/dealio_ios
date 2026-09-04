@@ -33,11 +33,11 @@ struct CustomerPropertyView: View {
                                 HStack {
                                     IconBadge(systemImage: "house.fill", tint: .brandTeal)
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(deal.projectName ?? "Property").font(.subheadline.weight(.bold))
+                                        Text(deal.projectName.nilIfEmpty ?? "Property").font(.subheadline.weight(.bold))
                                         if let builder = deal.builderName { Text(builder).font(.caption).foregroundStyle(.secondary) }
                                     }
                                     Spacer()
-                                    StatusBadge(text: deal.dealStatus ?? "—", color: statusColor(deal.dealStatus))
+                                    StatusBadge(text: deal.dealStatus.nilIfEmpty ?? "—", color: statusColor(deal.dealStatus))
                                 }
                                 if let v = deal.dealValue, v > 0 {
                                     Text(Money.inr(v)).font(.headline).foregroundStyle(.brandTeal)

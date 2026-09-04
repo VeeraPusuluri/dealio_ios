@@ -98,7 +98,7 @@ private struct InventoryCard: View {
 
             if expanded {
                 UnitMatrixGrid(units: Units.of(project))
-                NavigationLink { ProjectDetailView(project: project) } label: {
+                NavigationLink(value: PortalRoute.builderProjectDetail(project.id)) {
                     Text("Open project to edit")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Color.dealioTextSecondary)

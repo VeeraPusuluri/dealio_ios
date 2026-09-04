@@ -230,15 +230,18 @@ struct CPMeetupFormView: View {
     // MARK: Sections
 
     private var coverSection: some View {
-        Section("Cover photo") {
+        // Read once, outside the picker's label closure: reaching into the
+        // main-actor model from in there is what the concurrency warning is about.
+        let hasCover = model.coverImage != nil
+        return Section("Cover photo") {
             MeetupHero(category: model.category, height: 120, coverImage: model.coverImage)
                 .clipShape(RoundedCornerShape12())
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             HStack {
                 PhotosPicker(selection: $coverPick, matching: .images) {
-                    Label(model.coverImage == nil ? "Add a cover" : "Replace cover", systemImage: "photo")
+                    Label(hasCover ? "Replace cover" : "Add a cover", systemImage: "photo")
                 }
-                if model.coverImage != nil {
+                if hasCover {
                     Spacer()
                     Button("Remove", role: .destructive) { model.coverImage = nil }.font(.footnote)
                 }

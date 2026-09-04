@@ -9,18 +9,23 @@ import SwiftUI
 @MainActor
 final class PortalRouter: ObservableObject {
     @Published var selection = 0
-    @Published var paths: [[PortalRoute]]
+    /// One stack per tab. `NavigationPath` rather than `[PortalRoute]` because a
+    /// screen pushes whatever value it has in hand — a `Project` from a list, a
+    /// `PortalRoute` from a notification. A homogeneous `[PortalRoute]` binding
+    /// silently *disables* every `NavigationLink(value:)` carrying any other
+    /// type, which is why tapping a project used to do nothing.
+    @Published var paths: [NavigationPath]
 
     let portal: DeepLinkPortal
 
     init(portal: DeepLinkPortal, tabs: Int = 5) {
         self.portal = portal
-        self.paths = Array(repeating: [], count: tabs)
+        self.paths = Array(repeating: NavigationPath(), count: tabs)
     }
 
-    func path(_ tab: Int) -> Binding<[PortalRoute]> {
+    func path(_ tab: Int) -> Binding<NavigationPath> {
         Binding(
-            get: { [weak self] in self?.paths[safe: tab] ?? [] },
+            get: { [weak self] in self?.paths[safe: tab] ?? NavigationPath() },
             set: { [weak self] value in
                 guard let self, self.paths.indices.contains(tab) else { return }
                 self.paths[tab] = value
@@ -39,7 +44,7 @@ final class PortalRouter: ObservableObject {
         case .tab(let index):
             guard paths.indices.contains(index) else { return }
             selection = index
-            paths[index] = []
+            paths[index] = NavigationPath()
         default:
             guard paths.indices.contains(selection) else { return }
             paths[selection].append(route)
@@ -84,6 +89,17 @@ struct PortalRouteDestination: View {
         case .builderSettings: BuilderSettingsView()
         case .builderNotifications: BuilderNotificationsScreen()
         case .builderConversations: BuilderConversationsView()
+        case .builderProjectForm(let id): BuilderProjectFormView(projectId: id)
+        case .builderProjectDocuments(let id): BuilderProjectDocumentsLoader(projectId: id)
+        case .builderRERA: BuilderRERAView()
+        case .builderVirtualTours: BuilderVirtualToursView()
+        case .builderBroadcast: BuilderBroadcastView()
+        case .builderDemandLetters: BuilderDemandLettersView()
+        case .builderAnalytics: BuilderAnalyticsView()
+        case .builderAI: BuilderAIView()
+        case .builderCPPerformance: BuilderCPPerformanceView()
+        case .builderPossession: BuilderPossessionView()
+        case .builderSnagging: BuilderSnaggingView()
 
         // CP
         case .cpDealDetail(let id): CPDealDetailView(dealId: id)
@@ -98,6 +114,15 @@ struct PortalRouteDestination: View {
         case .cpProfile: CPProfileView()
         case .cpNotifications: CPNotificationsView()
         case .cpConversations: CPConversationsView()
+        case .cpCallLogs: CPCallLogsView()
+        case .cpLeaderboard: CPLeaderboardView()
+        case .cpAIInsights: CPAIInsightsView()
+        case .cpContentStudio: CPContentStudioView()
+        case .cpBrochure: CPBrochureView()
+        case .cpBroadcast: CPBroadcastView()
+        case .cpSocialAnalytics: CPSocialAnalyticsView()
+        case .cpLoanAssist: CPLoanAssistView()
+        case .cpJV: CPJVView()
 
         // Customer
         case .customerProjectDetail(let id): CustomerProjectLoader(projectId: id)
@@ -111,6 +136,10 @@ struct PortalRouteDestination: View {
         case .customerMeetupDetail(let id): CustomerMeetupDetailView(meetupId: id)
         case .customerNotifications: CustomerNotificationsView()
         case .customerConversations: CustomerConversationsView()
+        case .customerEMI: CustomerEMIView()
+        case .customerEligibility: CustomerLoanEligibilityView()
+        case .customerLoanApply(let projectId, let builderId):
+            CustomerLoanApplyView(projectId: projectId, builderId: builderId)
 
         // Shared
         case .conversation(let id):
@@ -120,9 +149,26 @@ struct PortalRouteDestination: View {
 }
 
 extension View {
-    /// Teaches a navigation stack every route a notification can name.
+    /// Teaches a navigation stack every route it can be asked to push.
+    ///
+    /// Every one of these is declared here, on the **stack root**, rather than on
+    /// the screen that pushes it. Two reasons, both learned the hard way:
+    ///
+    /// - A `navigationDestination(for:)` declared on a view that has itself been
+    ///   pushed is not reliably matched when the stack is driven by a `path`
+    ///   binding — which is why tapping a commission row opened nothing.
+    /// - `navigationDestination(isPresented:)` does not work at all in a
+    ///   path-driven stack, which is what the stage-action buttons on the deal
+    ///   screens used to use.
+    ///
+    /// `Commission` and `CPStat` ride along as their own value types because the
+    /// rows carrying them already hold the whole row — refetching it by id to
+    /// push it would be a round trip for data the screen has in hand.
     func portalDestinations() -> some View {
-        navigationDestination(for: PortalRoute.self) { PortalRouteDestination(route: $0) }
+        self
+            .navigationDestination(for: PortalRoute.self) { PortalRouteDestination(route: $0) }
+            .navigationDestination(for: Commission.self) { BuilderCommissionDetailView(commission: $0) }
+            .navigationDestination(for: CPStat.self) { BuilderCPDetailView(stat: $0) }
     }
 }
 
@@ -169,6 +215,25 @@ private struct CPProjectLoader: View {
         }
         .task {
             project = try? await CPService.project(projectId)
+            failed = project == nil
+        }
+    }
+}
+
+/// The documents screen takes the whole project; a route carries only its id.
+private struct BuilderProjectDocumentsLoader: View {
+    let projectId: Int
+    @EnvironmentObject private var auth: AuthStore
+    @State private var project: Project?
+    @State private var failed = false
+
+    var body: some View {
+        ProjectLoadingShell(project: project, failed: failed) {
+            BuilderProjectDocumentsView(project: $0)
+        }
+        .task {
+            guard let builderId = await auth.resolvedBuilderId() else { failed = true; return }
+            project = try? await APIClient.shared.get("/builder/\(builderId)/projects/\(projectId)")
             failed = project == nil
         }
     }

@@ -86,6 +86,7 @@ struct BuilderDealDetailView: View {
     var title: String = "Deal"
 
     @EnvironmentObject private var auth: AuthStore
+    @EnvironmentObject private var router: PortalRouter
     @Environment(\.openURL) private var openURL
     @StateObject private var model = BuilderDealDetailModel()
 
@@ -135,7 +136,7 @@ struct BuilderDealDetailView: View {
                                 .padding(16).frame(maxWidth: .infinity, alignment: .leading).cardSurface()
                         }
 
-                        NavigationLink { BuilderConversationsView() } label: {
+                        NavigationLink(value: PortalRoute.builderConversations) {
                             Label("Message", systemImage: "bubble.left")
                                 .font(.footnote.weight(.semibold))
                                 .frame(maxWidth: .infinity).padding(.vertical, 13)
@@ -161,24 +162,20 @@ struct BuilderDealDetailView: View {
                                             set: { if !$0 { model.toast = nil } })) {
             Button("OK", role: .cancel) { model.toast = nil }
         } message: { Text(model.toast ?? "") }
-        .navigationDestination(isPresented: $goMeetings) { BuilderMeetingsView() }
-        .navigationDestination(isPresented: $goShortlists) { BuilderShortlistsView() }
-        .navigationDestination(isPresented: $goCommissions) { BuilderCommissionsView() }
     }
 
-    @State private var goMeetings = false
-    @State private var goShortlists = false
-    @State private var goCommissions = false
-
-    /// Keeps the three stage-CTA destinations attached to the card without
-    /// nesting `navigationDestination` inside a conditional.
+    /// Keeps the stage card's layout unchanged now that its destinations are
+    /// pushed through the router rather than attached here.
     private var stageNavigation: some View { Color.clear }
 
     private func handle(_ target: StageTarget) {
         switch target {
-        case .builderMeetings: goMeetings = true
-        case .builderShortlists: goShortlists = true
-        case .builderCommissions: goCommissions = true
+        // Pushed through the router. `navigationDestination(isPresented:)` does
+        // nothing in a stack driven by a `path` binding, so these three CTAs
+        // used to be dead buttons.
+        case .builderMeetings: router.open(.builderMeetings)
+        case .builderShortlists: router.open(.builderShortlists)
+        case .builderCommissions: router.open(.builderCommissions)
         case .builderAcceptAgreement: Task { await model.acceptAgreement() }
         default: break
         }

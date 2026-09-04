@@ -124,7 +124,7 @@ struct MeetingCalendarView: View {
             }
         }
         .padding(16)
-        .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.dealioSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.dealioCardBorder))
     }
 
@@ -193,7 +193,7 @@ struct MeetingCalendarView: View {
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .background(Color.dealioSurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color.dealioCardBorder))
                 }
             }

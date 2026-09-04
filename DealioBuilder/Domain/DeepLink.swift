@@ -47,6 +47,18 @@ enum PortalRoute: Hashable {
     case builderSettings
     case builderNotifications
     case builderConversations
+    /// The project wizard. `nil` creates; an id edits.
+    case builderProjectForm(Int?)
+    case builderProjectDocuments(Int)
+    case builderRERA
+    case builderVirtualTours
+    case builderBroadcast
+    case builderDemandLetters
+    case builderAnalytics
+    case builderAI
+    case builderCPPerformance
+    case builderPossession
+    case builderSnagging
 
     // CP
     case cpDealDetail(Int)
@@ -61,6 +73,15 @@ enum PortalRoute: Hashable {
     case cpProfile
     case cpNotifications
     case cpConversations
+    case cpCallLogs
+    case cpLeaderboard
+    case cpAIInsights
+    case cpContentStudio
+    case cpBrochure
+    case cpBroadcast
+    case cpSocialAnalytics
+    case cpLoanAssist
+    case cpJV
 
     // Customer
     case customerProjectDetail(Int)
@@ -74,6 +95,10 @@ enum PortalRoute: Hashable {
     case customerMeetupDetail(Int)
     case customerNotifications
     case customerConversations
+    case customerEMI
+    case customerEligibility
+    /// The loan application form, optionally pre-filled from a project.
+    case customerLoanApply(projectId: Int?, builderId: Int?)
 
     // Shared
     case conversation(Int)

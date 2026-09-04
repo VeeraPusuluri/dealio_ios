@@ -68,3 +68,29 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ENABLE_PREVIEWS: YES
+  # Drives the real app against `UITestSupport`'s stubbed backend, so navigation
+  # can be asserted without a live server or a sign-in round trip.
+  DealioBuilderUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: DealioBuilderUITests
+    dependencies:
+      - target: DealioBuilder
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dealio.builder.uitests
+        TEST_TARGET_NAME: DealioBuilder
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  DealioBuilder:
+    build:
+      targets:
+        DealioBuilder: all
+        DealioBuilderUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - DealioBuilderUITests

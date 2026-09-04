@@ -73,34 +73,66 @@ enum Roles {
 }
 
 /// A row of role pills — the same control on sign-in and sign-up.
+///
+/// The selected pill fills with the role's own colour, which is the colour the
+/// portal it opens is themed in: picking "Customer" here previews the gold the
+/// buyer portal wears, so the choice reads as a destination and not a form field.
 struct RoleSelector: View {
     let roles: [DealioRole]
     @Binding var selection: String
     var showTagline = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             FlowLayout(spacing: 8) {
                 ForEach(roles) { role in
-                    let on = role.value == selection
-                    Button { selection = role.value } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: role.icon).font(.caption)
-                            Text(role.shortLabel).font(.subheadline.weight(on ? .semibold : .regular))
-                        }
-                        .foregroundStyle(on ? .white : Color.dealioTextSecondary)
-                        .padding(.horizontal, 14).padding(.vertical, 9)
-                        .background(on ? role.color : Color.dealioFieldFill, in: Capsule())
-                        .overlay(Capsule().strokeBorder(on ? role.color : Color.dealioCardBorder, lineWidth: 1))
-                    }
-                    .buttonStyle(.plain)
+                    pill(role)
                 }
             }
             if showTagline, let picked = Roles.forValue(selection) {
-                Text(picked.tagline)
-                    .font(.caption)
-                    .foregroundStyle(Color.dealioTextSecondary)
+                HStack(spacing: 5) {
+                    Image(systemName: "info.circle.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(picked.color)
+                    Text(picked.tagline)
+                        .font(.caption)
+                        .foregroundStyle(Color.dealioTextSecondary)
+                }
+                .id(picked.value)
+                .transition(.opacity)
             }
         }
+        .animation(.spring(response: 0.3, dampingFraction: 0.78), value: selection)
+    }
+
+    private func pill(_ role: DealioRole) -> some View {
+        let on = role.value == selection
+        return Button {
+            selection = role.value
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: role.icon)
+                    .font(.system(size: 12, weight: .semibold))
+                Text(role.shortLabel)
+                    .font(.subheadline.weight(on ? .bold : .medium))
+            }
+            .foregroundStyle(on ? .white : Color.dealioTextSecondary)
+            .padding(.horizontal, 15)
+            .padding(.vertical, 10)
+            .background(
+                on ? AnyShapeStyle(LinearGradient(colors: [role.color.opacity(0.92), role.color],
+                                                  startPoint: .topLeading, endPoint: .bottomTrailing))
+                   : AnyShapeStyle(Color.dealioFieldFill),
+                in: Capsule()
+            )
+            .overlay(
+                Capsule().strokeBorder(on ? Color.clear : Color.dealioCardBorder, lineWidth: 1)
+            )
+            .shadow(color: on ? role.color.opacity(0.35) : .clear, radius: 8, y: 4)
+        }
+        .buttonStyle(.pressable)
+        .accessibilityLabel(role.label)
+        .accessibilityHint(role.tagline)
+        .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
     }
 }

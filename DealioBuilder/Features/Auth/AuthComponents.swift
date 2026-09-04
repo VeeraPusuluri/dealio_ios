@@ -3,29 +3,56 @@ import SwiftUI
 // MARK: - Outlined field
 
 /// A labelled, rounded-border input container matching the Android auth fields
-/// (border turns teal and thickens while focused).
+/// (border turns teal and thickens while focused, red when the value is wrong).
 struct DealioField<Content: View>: View {
     let label: String
     var focused: Bool
+    var icon: String? = nil
+    var error: String? = nil
     @ViewBuilder var content: () -> Content
+
+    private var borderColor: Color {
+        if error != nil { return .dealioError }
+        return focused ? .dealioTeal : .dealioCardBorder
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
-                .font(.caption.weight(.medium))
-                .foregroundColor(focused ? .dealioTeal : .dealioTextSecondary)
-            content()
-                .padding(.horizontal, 14)
-                .frame(height: 52)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(focused ? Color.white : Color.dealioFieldFill)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(focused ? Color.dealioTeal : Color.dealioCardBorder,
-                                lineWidth: focused ? 2 : 1)
-                )
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(error != nil ? Color.dealioError
+                                 : focused ? Color.dealioTeal : Color.dealioTextSecondary)
+
+            HStack(spacing: 10) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(focused ? Color.dealioTeal : Color.dealioTextSecondary)
+                        .frame(width: 18)
+                }
+                content()
+                    .tint(.dealioTeal)
+                    .foregroundStyle(Color.dealioTextPrimary)
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 54)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(focused ? Color.dealioSurface : Color.dealioFieldFill)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(borderColor, lineWidth: focused || error != nil ? 2 : 1)
+            )
+            .animation(.easeOut(duration: 0.16), value: focused)
+            .animation(.easeOut(duration: 0.16), value: error)
+
+            if let error {
+                Label(error, systemImage: "exclamationmark.circle.fill")
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(Color.dealioError)
+                    .transition(.opacity)
+            }
         }
     }
 }
@@ -37,6 +64,11 @@ struct PhoneField: View {
     @Binding var countryCode: String
     @Binding var phone: String
     var enabled: Bool = true
+    /// Shown under the number once the person has left the field with a bad value.
+    var error: String? = nil
+    var onSubmit: (() -> Void)? = nil
+    /// Reports focus loss so the caller can decide when to start validating.
+    var onPhoneBlur: (() -> Void)? = nil
 
     @FocusState private var focus: Field?
     private enum Field { case code, phone }
@@ -52,13 +84,17 @@ struct PhoneField: View {
                         if filtered != new { countryCode = filtered }
                     }
             }
-            .frame(width: 96)
+            .frame(width: 92)
 
-            DealioField(label: "Phone number", focused: focus == .phone) {
+            DealioField(label: "Phone number", focused: focus == .phone,
+                        icon: "phone.fill", error: error) {
                 TextField("9876543210", text: $phone)
                     .keyboardType(.phonePad)
                     .textContentType(.telephoneNumber)
+                    .font(.body.weight(.medium))
                     .focused($focus, equals: .phone)
+                    .submitLabel(.go)
+                    .onSubmit { onSubmit?() }
                     .onChange(of: phone) { _, new in
                         let filtered = String(new.prefix(15).filter { $0.isNumber })
                         if filtered != new { phone = filtered }
@@ -66,6 +102,9 @@ struct PhoneField: View {
             }
         }
         .disabled(!enabled)
+        .onChange(of: focus) { was, _ in
+            if was == .phone { onPhoneBlur?() }
+        }
     }
 }
 
@@ -73,67 +112,124 @@ struct PhoneField: View {
 
 /// Six-box OTP entry. A real (near-invisible) text field sits over the boxes and
 /// captures input; the boxes are a visual decoration of the current value.
+///
+/// The active box carries a blinking caret and lifts slightly, so the person can
+/// see where the next digit lands — without it the six boxes read as decoration
+/// and people tap each one in turn looking for a cursor.
 struct OtpInput: View {
     @Binding var value: String
     var enabled: Bool = true
+    var invalid: Bool = false
+    /// Called the moment six digits are present, for hands-free verification.
+    var onComplete: (() -> Void)? = nil
 
     @FocusState private var focused: Bool
+    @State private var caretOn = true
+    @State private var shake: CGFloat = 0
+
+    private let caretTimer = Timer.publish(every: 0.55, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ZStack {
             HStack(spacing: 8) {
-                ForEach(0..<6, id: \.self) { index in
-                    let chars = Array(value)
-                    let char = index < chars.count ? String(chars[index]) : ""
-                    let active = enabled && focused && value.count == index
-                    Text(char)
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundColor(.dealioNavy)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(active ? Color.white : Color.dealioFieldFill))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(active ? Color.dealioTeal : Color.dealioCardBorder,
-                                        lineWidth: active ? 2 : 1)
-                        )
-                }
+                ForEach(0..<6, id: \.self) { index in box(index) }
             }
 
             TextField("", text: $value)
                 .keyboardType(.numberPad)
                 .textContentType(.oneTimeCode)
                 .focused($focused)
-                .foregroundColor(.clear)
+                .foregroundStyle(.clear)
                 .tint(.clear)
-                .accentColor(.clear)
                 .opacity(0.02)
-                .onChange(of: value) { _, new in
+                .onChange(of: value) { old, new in
                     let filtered = String(new.prefix(6).filter { $0.isNumber })
-                    if filtered != new { value = filtered }
+                    if filtered != new { value = filtered; return }
+                    // Auto-submit on the sixth digit — an OTP screen where the
+                    // person still has to reach for a button is a step too many,
+                    // and iOS's own autofill delivers all six at once.
+                    if filtered.count == 6 && old.count < 6 { onComplete?() }
                 }
         }
+        .offset(x: shake)
         .disabled(!enabled)
         .contentShape(Rectangle())
         .onTapGesture { focused = true }
+        .onAppear { focused = true }
+        .onReceive(caretTimer) { _ in caretOn.toggle() }
+        .onChange(of: invalid) { _, isInvalid in
+            guard isInvalid else { return }
+            // A wrong code shakes the row: the error text below is easy to miss
+            // when the eye is still on the boxes.
+            withAnimation(.linear(duration: 0.06).repeatCount(5, autoreverses: true)) { shake = 7 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.36) { shake = 0 }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Six digit verification code")
+        .accessibilityValue(value.isEmpty ? "Empty" : value.map(String.init).joined(separator: " "))
+    }
+
+    private func box(_ index: Int) -> some View {
+        let chars = Array(value)
+        let char = index < chars.count ? String(chars[index]) : ""
+        let active = enabled && focused && value.count == index
+        let filled = !char.isEmpty
+
+        return ZStack {
+            if char.isEmpty && active && caretOn {
+                Capsule()
+                    .fill(Color.dealioTeal)
+                    .frame(width: 2, height: 22)
+            }
+            Text(char)
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundStyle(Color.dealioTextPrimary)
+                .contentTransition(.numericText())
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 58)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(active || filled ? Color.dealioSurface : Color.dealioFieldFill)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(borderColor(active: active, filled: filled),
+                        lineWidth: active || invalid ? 2 : 1)
+        )
+        .shadow(color: active ? Color.dealioTeal.opacity(0.18) : .clear, radius: 6, y: 3)
+        .scaleEffect(active ? 1.04 : 1)
+        .animation(.spring(response: 0.28, dampingFraction: 0.7), value: active)
+        .animation(.easeOut(duration: 0.15), value: filled)
+    }
+
+    private func borderColor(active: Bool, filled: Bool) -> Color {
+        if invalid { return .dealioError }
+        if active { return .dealioTeal }
+        return filled ? Color.dealioTeal.opacity(0.45) : .dealioCardBorder
     }
 }
 
 // MARK: - Primary button
 
-/// Full-width navy primary button with a loading spinner state.
+/// Full-width teal primary button with loading and momentary success states.
 struct DealioButton: View {
     let title: String
     var loading: Bool = false
     var enabled: Bool = true
+    /// Swaps the label for a tick — set briefly after a successful verify so the
+    /// screen confirms before the portal replaces it.
+    var succeeded: Bool = false
+    var successTitle: String = "Done"
     let action: () -> Void
 
-    private var isActive: Bool { enabled && !loading }
+    private var isTappable: Bool { enabled && !loading && !succeeded }
 
     private var fill: AnyShapeStyle {
-        isActive
+        if succeeded { return AnyShapeStyle(Color.dealioStatusGreen) }
+        return enabled && !loading
             ? AnyShapeStyle(LinearGradient(
-                colors: [.dealioTeal, .dealioTealDeep],
+                colors: [.dealioTealBright, .dealioTeal, .dealioTealDeep],
                 startPoint: .leading, endPoint: .trailing))
             : AnyShapeStyle(Color.dealioButtonDisabled)
     }
@@ -141,7 +237,11 @@ struct DealioButton: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                if loading {
+                if succeeded {
+                    Label(successTitle, systemImage: "checkmark.circle.fill")
+                        .font(.headline)
+                        .transition(.scale.combined(with: .opacity))
+                } else if loading {
                     ProgressView().tint(.white)
                 } else {
                     Text(title).font(.headline)
@@ -149,12 +249,15 @@ struct DealioButton: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 54)
-            .background(fill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .foregroundStyle(isActive ? Color.white : Color.dealioTextSecondary)
-            .shadow(color: isActive ? Color.dealioTeal.opacity(0.35) : .clear,
-                    radius: 12, x: 0, y: 6)
+            .background(fill, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+            .foregroundStyle(enabled || succeeded ? Color.white : Color.dealioTextSecondary)
+            .shadow(color: enabled && !loading && !succeeded ? Color.dealioTeal.opacity(0.34) : .clear,
+                    radius: 14, x: 0, y: 7)
+            .animation(.spring(response: 0.3, dampingFraction: 0.75), value: succeeded)
+            .animation(.easeOut(duration: 0.18), value: loading)
         }
-        .disabled(!enabled || loading)
+        .buttonStyle(.pressable)
+        .disabled(!isTappable)
     }
 }
 
@@ -165,12 +268,22 @@ struct AuthErrorText: View {
 
     var body: some View {
         if let message, !message.isEmpty {
-            Text(message)
-                .font(.subheadline)
-                .foregroundColor(.dealioError)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-                .padding(.top, 12)
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(Color.dealioError)
+                Text(message)
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(Color.dealioError)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.dealioError.opacity(0.09),
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.top, 12)
         }
     }
 }
@@ -183,19 +296,20 @@ struct DemoCodeHint: View {
     var body: some View {
         if let demoCode, !demoCode.isEmpty {
             Button { onFill(demoCode) } label: {
-                Text("Dev code: \(demoCode) — tap to fill")
-                    .font(.subheadline)
-                    .foregroundColor(.dealioTextSecondary)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Color.dealioTeal.opacity(0.10), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(Color.dealioTeal.opacity(0.35), lineWidth: 1)
-                    )
+                HStack(spacing: 6) {
+                    Image(systemName: "wand.and.stars").font(.caption2)
+                    Text("Dev code \(demoCode) — tap to fill")
+                        .font(.caption.weight(.medium))
+                }
+                .foregroundStyle(Color.dealioTeal)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.dealioTeal.opacity(0.10), in: Capsule())
+                .overlay(Capsule().stroke(Color.dealioTeal.opacity(0.30), lineWidth: 1))
             }
-            .buttonStyle(.plain)
-            .padding(.top, 12)
+            .buttonStyle(.pressable)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 14)
         }
     }
 }
@@ -205,14 +319,20 @@ struct DemoCodeHint: View {
 /// Translucent pill used in the hero to surface key selling points.
 struct TrustChip: View {
     let text: String
+    var icon: String? = nil
 
     var body: some View {
-        Text(text)
-            .font(.caption.weight(.medium))
-            .foregroundColor(.white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        HStack(spacing: 4) {
+            if let icon {
+                Image(systemName: icon).font(.system(size: 9, weight: .bold))
+            }
+            Text(text).font(.caption2.weight(.semibold))
+        }
+        .foregroundStyle(.white.opacity(0.95))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(.white.opacity(0.13), in: Capsule())
+        .overlay(Capsule().strokeBorder(.white.opacity(0.16), lineWidth: 1))
     }
 }
 
@@ -231,10 +351,10 @@ struct RoleChip: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)
                 .background(
-                    selected ? color : Color.white,
+                    selected ? color : Color.dealioSurface,
                     in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                 )
-                .foregroundColor(selected ? .white : .dealioTextPrimary)
+                .foregroundStyle(selected ? .white : Color.dealioTextPrimary)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .stroke(selected ? Color.clear : Color.dealioCardBorder, lineWidth: 1)

@@ -486,6 +486,14 @@ private struct ContactCard: View {
 
 // MARK: - Editor
 
+/// Add or edit one contact.
+///
+/// A `Form` with eleven bare `TextField`s gave a placeholder that vanished the
+/// moment you typed, no way to mark a field wrong, and a Save button that greyed
+/// out without saying why. This is the same eleven fields on the Dealio form
+/// system: a persistent label per field, a leading icon, live validation with the
+/// reason under the offending line, and a save bar that names what is still
+/// missing.
 private struct ContactEditorSheet: View {
     let existing: CpContact?
     let onSave: (CpContactPayload) -> Void
@@ -502,48 +510,197 @@ private struct ContactEditorSheet: View {
     @State private var investment = ""
     @State private var address = ""
     @State private var notes = ""
+    /// Flipped by a Save attempt, so untouched required fields reveal their error.
+    @State private var submitted = false
+
+    @FocusState private var codeFocused: Bool
+
+    private var nameCheck: FieldValidation { .required(name, "Full name") }
+    private var phoneCheck: FieldValidation { .phone(phone) }
+    private var emailCheck: FieldValidation { .email(email) }
+    private var salaryCheck: FieldValidation { .number(salary, "Annual salary", required: false, min: 0) }
+    private var investmentCheck: FieldValidation {
+        .number(investment, "Yearly investment", required: false, min: 0)
+    }
 
     private var canSave: Bool {
-        name.trimmedOrNil != nil && phone.filter(\.isNumber).count >= 6
+        nameCheck.isValid && phoneCheck.isValid && emailCheck.isValid
+            && salaryCheck.isValid && investmentCheck.isValid
     }
+
+    /// The first thing standing between the partner and a saved contact.
+    private var blocker: String? {
+        guard submitted else { return nil }
+        return [nameCheck, phoneCheck, emailCheck, salaryCheck, investmentCheck]
+            .compactMap(\.error).first
+    }
+
+    private var identityComplete: Bool { nameCheck.isValid && phoneCheck.isValid && emailCheck.isValid }
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Who they are") {
-                    TextField("Full name", text: $name).textContentType(.name)
-                    HStack {
-                        TextField("+91", text: $countryCode).frame(width: 64)
-                        Divider()
-                        TextField("Phone", text: $phone).keyboardType(.phonePad)
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        identitySection
+                        preferencesSection
+                        notesSection
                     }
-                    TextField("Email", text: $email).keyboardType(.emailAddress).textInputAutocapitalization(.never)
-                    TextField("Designation", text: $designation)
+                    .padding(16)
+                    .padding(.bottom, 8)
                 }
-                Section("What they're after") {
-                    TextField("BHK preference", text: $bhk)
-                    TextField("Tags (comma separated)", text: $tags)
-                    TextField("Annual salary (₹)", text: $salary).keyboardType(.numberPad)
-                    TextField("Can invest per year (₹)", text: $investment).keyboardType(.numberPad)
-                    TextField("Address / city", text: $address)
-                }
-                Section("Notes") {
-                    TextField("Anything worth remembering", text: $notes, axis: .vertical).lineLimit(2...5)
+                .scrollDismissesKeyboard(.interactively)
+
+                DealioSaveBar(
+                    title: existing == nil ? "Add contact" : "Save changes",
+                    problem: blocker,
+                    ready: canSave
+                ) {
+                    // Always runs. A first tap on an invalid form is how the
+                    // person asks what is wrong — `submitted` reveals it.
+                    submitted = true
+                    guard canSave else { return }
+                    onSave(payload)
                 }
             }
+            .dealioPageBackground()
             .navigationTitle(existing == nil ? "New contact" : "Edit contact")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { onSave(payload) }.disabled(!canSave)
-                }
             }
             .onAppear(perform: prefill)
         }
     }
+
+    // MARK: Sections
+
+    private var identitySection: some View {
+        DealioFormSection(title: "Who they are",
+                          subtitle: "Name and number are all that's required",
+                          icon: "person.fill", tint: .brandTeal,
+                          complete: identityComplete) {
+            DealioTextField(label: "Full name", text: $name,
+                            placeholder: "e.g. Ramesh Kumar",
+                            icon: "person",
+                            validation: nameCheck,
+                            forceError: submitted,
+                            contentType: .name,
+                            capitalization: .words,
+                            required: true)
+
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Code")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.dealioTextSecondary)
+                    TextField("+91", text: $countryCode)
+                        .keyboardType(.phonePad)
+                        .focused($codeFocused)
+                        .tint(.dealioTeal)
+                        .foregroundStyle(Color.dealioTextPrimary)
+                        .padding(.horizontal, 14)
+                        .frame(height: DealioMetrics.fieldHeight)
+                        .background(RoundedRectangle(cornerRadius: DealioMetrics.fieldRadius,
+                                                     style: .continuous)
+                            .fill(codeFocused ? Color.dealioSurface : Color.dealioFieldFill))
+                        .overlay(RoundedRectangle(cornerRadius: DealioMetrics.fieldRadius,
+                                                  style: .continuous)
+                            .stroke(codeFocused ? Color.dealioTeal : Color.dealioCardBorder,
+                                    lineWidth: codeFocused ? 2 : 1))
+                        .onChange(of: countryCode) { _, new in
+                            let filtered = String(new.prefix(5).filter { $0.isNumber || $0 == "+" })
+                            if filtered != new { countryCode = filtered }
+                        }
+                }
+                .frame(width: 92)
+
+                DealioTextField(label: "Phone", text: $phone,
+                                placeholder: "9876543210",
+                                icon: "phone",
+                                validation: phoneCheck,
+                                forceError: submitted,
+                                keyboard: .phonePad,
+                                contentType: .telephoneNumber,
+                                required: true)
+            }
+
+            DealioTextField(label: "Email", text: $email,
+                            placeholder: "name@example.com",
+                            icon: "envelope",
+                            validation: emailCheck,
+                            forceError: submitted,
+                            keyboard: .emailAddress,
+                            contentType: .emailAddress,
+                            capitalization: .never,
+                            autocorrect: false)
+
+            DealioTextField(label: "Designation", text: $designation,
+                            placeholder: "e.g. Senior Engineer, Infosys",
+                            icon: "briefcase",
+                            helper: "What they do — useful when you call.",
+                            capitalization: .words)
+        }
+    }
+
+    private var preferencesSection: some View {
+        DealioFormSection(title: "What they're after",
+                          subtitle: "Drives the top-investors sort",
+                          icon: "house.fill", tint: .indigo) {
+            DealioTextField(label: "BHK preference", text: $bhk,
+                            placeholder: "e.g. 3 BHK",
+                            icon: "bed.double")
+
+            DealioTextField(label: "Tags", text: $tags,
+                            placeholder: "e.g. hot lead, NRI, referral",
+                            icon: "tag",
+                            helper: "Comma separated.")
+
+            DealioTextField(label: "Annual salary", text: $salary,
+                            placeholder: "1200000",
+                            icon: "indianrupeesign",
+                            validation: salaryCheck,
+                            forceError: submitted,
+                            keyboard: .numberPad,
+                            suffix: "₹/yr")
+
+            DealioTextField(label: "Can invest per year", text: $investment,
+                            placeholder: "500000",
+                            icon: "chart.line.uptrend.xyaxis",
+                            helper: investmentHelper,
+                            validation: investmentCheck,
+                            forceError: submitted,
+                            keyboard: .numberPad,
+                            suffix: "₹/yr")
+
+            DealioTextField(label: "Address / city", text: $address,
+                            placeholder: "e.g. Gachibowli, Hyderabad",
+                            icon: "mappin.and.ellipse",
+                            capitalization: .words)
+        }
+    }
+
+    /// Echoes the typed figure back in words. A nine-digit number typed into a
+    /// bare box is easy to get wrong by a factor of ten.
+    private var investmentHelper: String {
+        guard let value = Double(investment.filter(\.isNumber)), value > 0 else {
+            return "Seeded from salary when imported."
+        }
+        return "That's \(Money.inr(value)) a year."
+    }
+
+    private var notesSection: some View {
+        DealioFormSection(title: "Notes", icon: "note.text", tint: .orange) {
+            DealioTextField(label: "Anything worth remembering", text: $notes,
+                            placeholder: "Looking to move before June; wants a corner unit…",
+                            multiline: true,
+                            lineLimit: 3...6)
+        }
+    }
+
+    // MARK: Payload
 
     private var payload: CpContactPayload {
         CpContactPayload(

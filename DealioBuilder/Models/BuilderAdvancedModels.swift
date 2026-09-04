@@ -25,7 +25,9 @@ struct BuilderMeeting: Codable, Identifiable {
 }
 
 /// A CP commission line — `builder/:id/commissions`.
-struct Commission: Codable, Identifiable {
+/// `Hashable` so a commission row can be pushed by value from the list; `id` is
+/// the deal the commission was derived from, and what release patches against.
+struct Commission: Codable, Identifiable, Hashable {
     let id: String
     let projectName: String?
     let customerName: String?

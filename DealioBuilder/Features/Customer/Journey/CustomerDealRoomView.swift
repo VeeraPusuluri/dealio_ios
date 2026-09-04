@@ -167,12 +167,10 @@ struct CustomerDealRoomView: View {
     var titleFallback: String = "Deal"
 
     @EnvironmentObject private var auth: AuthStore
+    @EnvironmentObject private var router: PortalRouter
     @Environment(\.openURL) private var openURL
     @StateObject private var model = CustomerDealRoomModel()
     @State private var showAgreementPicker = false
-    @State private var goVisits = false
-    @State private var goLoan = false
-    @State private var goConversations = false
 
     /// True when the deal is genuinely waiting on the buyer and there is a
     /// confirm to make — the one case where the spine should carry the action.
@@ -230,7 +228,7 @@ struct CustomerDealRoomView: View {
                         // Messaging is one tap away rather than embedded: the
                         // advisor here is the same advisor on every other deal,
                         // with one shared conversation.
-                        Button { goConversations = true } label: {
+                        Button { router.open(.customerConversations) } label: {
                             Label("Message", systemImage: "bubble.left")
                                 .font(.footnote.weight(.semibold))
                                 .frame(maxWidth: .infinity).padding(.vertical, 13)
@@ -252,11 +250,6 @@ struct CustomerDealRoomView: View {
         .navigationTitle(model.deal?.projectName ?? titleFallback)
         .navigationBarTitleDisplayMode(.inline)
         .task { await reload() }
-        .navigationDestination(isPresented: $goVisits) { CustomerVisitsView() }
-        .navigationDestination(isPresented: $goLoan) {
-            CustomerLoanApplyView(projectId: model.deal?.projectId, builderId: model.project?.builderId)
-        }
-        .navigationDestination(isPresented: $goConversations) { CustomerConversationsView() }
         .sheet(isPresented: $model.picking) {
             UnitPickerSheet(
                 projectName: model.deal?.projectName ?? "this project",
@@ -284,8 +277,10 @@ struct CustomerDealRoomView: View {
 
     private func handle(_ target: StageTarget) {
         switch target {
-        case .customerVisits: goVisits = true
-        case .customerLoan: goLoan = true
+        case .customerVisits: router.open(.tab(1))
+        case .customerLoan:
+            router.open(.customerLoanApply(projectId: model.deal?.projectId,
+                                           builderId: model.project?.builderId))
         // Served in place rather than by navigating: the buyer is choosing a
         // flat *on this deal*, and the project page has no idea which deal
         // sent them.

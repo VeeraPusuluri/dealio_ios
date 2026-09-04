@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Brand palette (mirrors the Android app's ui/theme/Color.kt)
 
@@ -13,6 +14,26 @@ extension Color {
         )
     }
 
+    /// A token that resolves differently in light and dark mode.
+    ///
+    /// The brand hues (navy, teal, orange) are fixed — a Builder is the same teal
+    /// on every client, and the gradients read correctly on either background.
+    /// The *surface* tokens below are the ones that have to move: a page painted
+    /// `#F6F8FB` with `#13243A` text is unreadable under a dark appearance, which
+    /// is why they are declared as pairs rather than single hexes.
+    static func adaptive(light: UInt32, dark: UInt32) -> Color {
+        Color(uiColor: UIColor { traits in
+            let hex = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(
+                red: CGFloat((hex >> 16) & 0xFF) / 255,
+                green: CGFloat((hex >> 8) & 0xFF) / 255,
+                blue: CGFloat(hex & 0xFF) / 255,
+                alpha: 1
+            )
+        })
+    }
+
+    // Fixed brand hues — identical in both appearances.
     static let dealioNavyDeep = Color(hex: 0x0B1B2E)
     static let dealioNavy = Color(hex: 0x0D1F35)
     static let dealioNavyMid = Color(hex: 0x112E50)
@@ -21,15 +42,21 @@ extension Color {
     static let dealioTeal = Color(hex: 0x0A9CB5)
     static let dealioTealBright = Color(hex: 0x1CD8EE)
     static let dealioTealDeep = Color(hex: 0x0A818A)
-
     static let dealioOrange = Color(hex: 0xFF8930)
-    static let dealioMist = Color(hex: 0xF6F8FB)
-    static let dealioFieldFill = Color(hex: 0xF3F6FA)
-    static let dealioButtonDisabled = Color(hex: 0xE7ECF3)
-    static let dealioCardBorder = Color(hex: 0xE3E9F1)
-    static let dealioTextPrimary = Color(hex: 0x13243A)
-    static let dealioTextSecondary = Color(hex: 0x5C6B80)
-    static let dealioError = Color(hex: 0xC93B3B)
+
+    // Surfaces and ink — these follow the appearance.
+    /// The page ground every list and dashboard sits on.
+    static let dealioMist = adaptive(light: 0xF6F8FB, dark: 0x0B0F14)
+    /// A raised card on top of `dealioMist`.
+    static let dealioSurface = adaptive(light: 0xFFFFFF, dark: 0x161B22)
+    /// A card raised above another card (sheets, nested tiles).
+    static let dealioSurfaceElevated = adaptive(light: 0xFFFFFF, dark: 0x1C232C)
+    static let dealioFieldFill = adaptive(light: 0xF3F6FA, dark: 0x1B222B)
+    static let dealioButtonDisabled = adaptive(light: 0xE7ECF3, dark: 0x252D38)
+    static let dealioCardBorder = adaptive(light: 0xE3E9F1, dark: 0x2A323D)
+    static let dealioTextPrimary = adaptive(light: 0x13243A, dark: 0xEAF0F7)
+    static let dealioTextSecondary = adaptive(light: 0x5C6B80, dark: 0x93A2B5)
+    static let dealioError = adaptive(light: 0xC93B3B, dark: 0xFF6B6B)
 }
 
 // MARK: - Dealio "D" mark
