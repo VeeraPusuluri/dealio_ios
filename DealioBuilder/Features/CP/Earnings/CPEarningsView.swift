@@ -32,11 +32,12 @@ final class CPEarningsModel: ObservableObject {
 }
 
 struct CPEarningsView: View {
+    @EnvironmentObject private var router: PortalRouter
     @EnvironmentObject private var auth: AuthStore
     @StateObject private var model = CPEarningsModel()
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: router.path(3)) {
             ScrollView {
                 VStack(spacing: 16) {
                     if model.loading {
@@ -82,6 +83,7 @@ struct CPEarningsView: View {
                 .padding(.vertical, 12)
             }
             .background(Color.dealioMist.ignoresSafeArea())
+            .portalDestinations()
             .navigationTitle("Earnings")
             .task { await model.load(cpUserId: auth.user?.id ?? 0) }
             .refreshable { await model.load(cpUserId: auth.user?.id ?? 0) }

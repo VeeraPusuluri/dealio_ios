@@ -26,6 +26,7 @@ final class CPOverviewModel: ObservableObject {
 }
 
 struct CPOverviewView: View {
+    @EnvironmentObject private var router: PortalRouter
     @Binding var selection: Int
     @EnvironmentObject private var auth: AuthStore
     @StateObject private var model = CPOverviewModel()
@@ -33,7 +34,7 @@ struct CPOverviewView: View {
     private var activeLeads: Int { model.leads.filter { ($0.status ?? "") != "Booked" && ($0.status ?? "") != "Closed" }.count }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: router.path(0)) {
             ScrollView {
                 VStack(spacing: 16) {
                     hero
@@ -51,6 +52,7 @@ struct CPOverviewView: View {
                 .padding(.bottom, 24)
             }
             .background(Color.dealioMist.ignoresSafeArea())
+            .portalDestinations()
             .navigationBarHidden(true)
             .task { await model.load(cpUserId: auth.user?.id ?? 0) }
             .refreshable { await model.load(cpUserId: auth.user?.id ?? 0) }
@@ -124,13 +126,16 @@ struct CPOverviewView: View {
                 } else {
                     VStack(spacing: 6) {
                         ForEach(due?.meetings ?? []) { m in
-                            DueRow(title: m.customerName ?? "Meeting", subtitle: [m.projectName, m.time].compactMap { $0 }.joined(separator: " · "))
+                            DueRow(title: m.customerName.nilIfEmpty ?? "Meeting",
+                                   subtitle: [m.projectName, m.time].compactMap { $0?.nilIfEmpty }.joined(separator: " · "))
                         }
                         ForEach(due?.followUps ?? []) { f in
-                            DueRow(title: f.customerName ?? "Follow-up", subtitle: [f.projectName, f.reason].compactMap { $0 }.joined(separator: " · "))
+                            DueRow(title: f.customerName.nilIfEmpty ?? "Follow-up",
+                                   subtitle: [f.projectName, f.reason].compactMap { $0.nilIfEmpty }.joined(separator: " · "))
                         }
-                        ForEach(due?.callLogs ?? []) { c in
-                            DueRow(title: c.customerName ?? "Callback", subtitle: [c.projectName, c.outcome].compactMap { $0 }.joined(separator: " · "))
+                        ForEach(due?.callbacks ?? []) { c in
+                            DueRow(title: c.customerName.nilIfEmpty ?? "Callback",
+                                   subtitle: [c.projectName, c.status].compactMap { $0.nilIfEmpty }.joined(separator: " · "))
                         }
                     }
                 }

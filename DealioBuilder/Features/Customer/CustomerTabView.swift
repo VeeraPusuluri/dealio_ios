@@ -4,7 +4,8 @@ import SwiftUI
 /// but hides the system tab bar and floats a custom pill nav on top (see
 /// `FloatingTabBar`) whose icons bounce on tap.
 struct CustomerTabView: View {
-    @State private var selection = 0
+    @EnvironmentObject private var deepLink: DeepLinkCenter
+    @StateObject private var router = PortalRouter(portal: .customer)
 
     private let items: [FloatingTabItem] = [
         .init(icon: "house.fill", label: "Explore"),
@@ -15,14 +16,20 @@ struct CustomerTabView: View {
     ]
 
     var body: some View {
-        FloatingTabShell(items: items, selection: $selection) {
-            TabView(selection: $selection) {
+        FloatingTabShell(items: items, selection: $router.selection) {
+            TabView(selection: $router.selection) {
                 ExploreView().tag(0).modifier(FloatingTabBarPage())
                 CustomerVisitsView().tag(1).modifier(FloatingTabBarPage())
                 CustomerJourneyView().tag(2).modifier(FloatingTabBarPage())
                 SavedView().tag(3).modifier(FloatingTabBarPage())
                 CustomerProfileView().tag(4).modifier(FloatingTabBarPage())
             }
+        }
+        .environmentObject(router)
+        // A notification tapped in the tray lands here, on the screen it is about.
+        .task { router.follow(deepLink) }
+        .onChange(of: deepLink.pending) { _, pending in
+            if pending != nil { router.follow(deepLink) }
         }
     }
 }

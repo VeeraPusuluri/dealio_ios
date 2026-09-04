@@ -5,8 +5,15 @@ struct BuilderDemandLettersView: View {
     @StateObject private var model = BuilderDealsModel()
     @State private var expanded: Int?
 
-    private let active = ["Booked", "Negotiation", "Agreement", "Loan Application Created", "Loan Sanctioned"]
-    private var deals: [Deal] { model.deals.filter { active.contains($0.status ?? "") } }
+    /// Deals far enough along to have a payment schedule. Folded onto the
+    /// canonical ladder first, so a row still carrying "Loan Sanctioned" is
+    /// recognised as Booked rather than filtered out.
+    private var deals: [Deal] {
+        model.deals.filter {
+            ["Negotiation", "Agreement", "Pending Booking", "Booked", "Closed"]
+                .contains(DealFlow.canonicalStage($0.status) ?? "")
+        }
+    }
 
     var body: some View {
         Group {
@@ -31,7 +38,23 @@ struct BuilderDemandLettersView: View {
         .refreshable { if let id = await auth.resolvedBuilderId() { await model.load(builderId: id) } }
     }
 
-    private func isPaid(_ i: Installment) -> Bool { (i.status ?? "").lowercased() == "paid" }
+    private func isPaid(_ instalment: Installment) -> Bool {
+        (instalment.status ?? "").lowercased() == "paid"
+    }
+
+    /// An unpaid instalment whose due date has gone by. Worth its own colour: a
+    /// builder scanning this page is looking for the money that has not arrived,
+    /// not the money that is not due yet.
+    private func isOverdue(_ instalment: Installment) -> Bool {
+        guard !isPaid(instalment), let due = MeetingCal.day(from: instalment.dueDate) else { return false }
+        return due < Calendar.current.startOfDay(for: Date())
+    }
+
+    private func label(_ instalment: Installment) -> (text: String, tint: Color) {
+        if isPaid(instalment) { return ("Paid", .dealioStatusGreen) }
+        if isOverdue(instalment) { return ("Overdue", .dealioError) }
+        return ("Pending", .dealioStatusAmber)
+    }
 
     private func card(_ deal: Deal) -> some View {
         let schedule = deal.paymentSchedule ?? []
@@ -56,22 +79,27 @@ struct BuilderDemandLettersView: View {
 
             if expanded == deal.id {
                 HStack(spacing: 8) {
-                    miniStat("Received", Money.inr(paid), .green)
-                    miniStat("Pending", Money.inr(pending), .orange)
+                    miniStat("Value", Money.inr(deal.dealValue), .dealioTextPrimary)
+                    miniStat("Received", Money.inr(paid), .dealioStatusGreen)
+                    miniStat("Pending", Money.inr(pending), .dealioStatusAmber)
                 }
                 if schedule.isEmpty {
                     Text("No demand letters recorded for this deal yet.").font(.caption).foregroundStyle(.secondary)
                 } else {
-                    ForEach(schedule) { inst in
+                    ForEach(schedule) { instalment in
+                        let state = label(instalment)
                         HStack {
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(inst.installment ?? "Installment").font(.caption.weight(.semibold))
-                                Text("\(Money.inr(inst.amount)) · due \(inst.dueDate ?? "")").font(.caption2).foregroundStyle(.secondary)
+                                Text(instalment.installment?.nilIfEmpty ?? "Installment")
+                                    .font(.caption.weight(.semibold))
+                                Text("\(Money.inr(instalment.amount)) · due \(Fmt.date(instalment.dueDate))")
+                                    .font(.caption2).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            StatusBadge(text: inst.status ?? "Pending", color: statusColor(inst.status))
+                            StatusBadge(text: state.text, color: state.tint)
                         }
-                        .padding(10).background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10))
+                        .padding(10)
+                        .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10))
                     }
                 }
             }

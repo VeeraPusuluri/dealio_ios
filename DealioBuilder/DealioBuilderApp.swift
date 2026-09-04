@@ -56,6 +56,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
         print("[Push] tapped notification: \(userInfo)")
+        // The backend repeats the notification's web link in the FCM data
+        // payload under "link" — the same string the in-app bell carries — so a
+        // tray tap lands on the screen it is about. See `DeepLink`.
+        let link = (userInfo["link"] as? String) ?? (userInfo["gcm.notification.link"] as? String)
+        Task { @MainActor in DeepLinkCenter.shared.offer(link) }
         completionHandler()
     }
 }
@@ -73,6 +78,7 @@ struct DealioBuilderApp: App {
     @StateObject private var auth = AuthStore()
     @StateObject private var serverMonitor = ServerStatusMonitor()
     @StateObject private var appLock = AppLockManager()
+    @StateObject private var deepLink = DeepLinkCenter.shared
     @Environment(\.scenePhase) private var scenePhase
     @State private var showSplash = true
 
@@ -86,6 +92,7 @@ struct DealioBuilderApp: App {
                     RootView()
                         .environmentObject(auth)
                         .environmentObject(appLock)
+                        .environmentObject(deepLink)
                         .tint(.brandTeal)
                         .transition(.opacity)
                 }

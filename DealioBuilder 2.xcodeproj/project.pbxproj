@@ -98,7 +98,7 @@
 		0A2AD7B5B5C82DA3444F249F /* AuthScaffold.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthScaffold.swift; sourceTree = "<group>"; };
 		0FC94485911D93C4FA98A862 /* CPBrochureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CPBrochureView.swift; sourceTree = "<group>"; };
 		1390C338B5325DC98E4DBAFC /* CustomerVisitsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomerVisitsView.swift; sourceTree = "<group>"; };
-		15AD8A3ED4116A10AB3CDA7F /* DealioBuilder.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DealioBuilder.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		15AD8A3ED4116A10AB3CDA7F /* DealioBuilder.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DealioBuilder.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		16FE19C055FD3AFDDD48F943 /* SignupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignupView.swift; sourceTree = "<group>"; };
 		188BC408FF01CEDC4C104597 /* BuilderChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuilderChatModels.swift; sourceTree = "<group>"; };
 		1A4A9850B9CD94A247F78D6E /* ExploreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreView.swift; sourceTree = "<group>"; };
@@ -746,15 +746,14 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 2660;
 				TargetAttributes = {
 					214D9F867454605021D32728 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
 			};
-			buildConfigurationList = FE36A676574BF554A8585ED4 /* Build configuration list for PBXProject "DealioBuilder" */;
+			buildConfigurationList = FE36A676574BF554A8585ED4 /* Build configuration list for PBXProject "DealioBuilder 2" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -934,9 +933,10 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 622PYKY2SY;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -951,6 +951,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -1012,9 +1013,10 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 622PYKY2SY;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -1036,6 +1038,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -1054,7 +1057,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		FE36A676574BF554A8585ED4 /* Build configuration list for PBXProject "DealioBuilder" */ = {
+		FE36A676574BF554A8585ED4 /* Build configuration list for PBXProject "DealioBuilder 2" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				B7DEE80209A24EB2914BC786 /* Debug */,

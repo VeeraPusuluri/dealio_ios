@@ -1,13 +1,14 @@
 import SwiftUI
 
 struct CustomerProfileView: View {
+    @EnvironmentObject private var router: PortalRouter
     @EnvironmentObject private var auth: AuthStore
     @EnvironmentObject private var appLock: AppLockManager
 
     private var displayName: String { auth.user?.fullName ?? "Customer" }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: router.path(4)) {
             GeometryReader { geo in
             ScrollView {
                 VStack(spacing: 18) {
@@ -39,6 +40,10 @@ struct CustomerProfileView: View {
                         ProfileRow("Snagging report", "wrench.and.screwdriver.fill", .red) { CustomerSnaggingView() }
                         divider
                         ProfileRow("Contact us", "headphones", .green) { CustomerContactView() }
+                        divider
+                        ProfileRow("Notifications", "bell.fill", .pink) { CustomerNotificationsView() }
+                        divider
+                        ProfileRow("Meetups near you", "person.3.fill", .purple) { CustomerMeetupsView() }
                     }
 
                     // Security
@@ -64,6 +69,7 @@ struct CustomerProfileView: View {
             .background(Color.dealioMist.ignoresSafeArea())
             .ignoresSafeArea(.container, edges: .top)
             }
+            .portalDestinations()
             .navigationBarHidden(true)
         }
     }
@@ -72,8 +78,7 @@ struct CustomerProfileView: View {
 
     private func header(topInset: CGFloat) -> some View {
         VStack(spacing: 14) {
-            InitialsAvatar(name: displayName, tint: .dealioTealBright, size: 76)
-                .overlay(Circle().strokeBorder(.white.opacity(0.25), lineWidth: 1))
+            AccountAvatar(size: 76, tint: .dealioTealBright)
 
             VStack(spacing: 3) {
                 Text(displayName)

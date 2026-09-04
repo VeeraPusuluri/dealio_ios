@@ -60,6 +60,57 @@ final class AuthStore: ObservableObject {
     private struct EnsureBuilderRequest: Encodable { let name: String; let email: String?; let phone: String?; let userId: Int }
 
     struct OTPSendResult: Decodable { let maskedPhone: String?; let demoCode: String? }
+
+    /// The sign-in pre-flight's answer: is this number registered, under which
+    /// role, and is the account in good standing?
+    struct PhoneLookupData: Decodable {
+        var exists = false
+        var role: String?
+        var suspended = false
+
+        private enum CodingKeys: String, CodingKey { case exists, role, suspended }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            exists = try c.decodeIfPresent(Bool.self, forKey: .exists) ?? false
+            role = try c.decodeIfPresent(String.self, forKey: .role)
+            suspended = try c.decodeIfPresent(Bool.self, forKey: .suspended) ?? false
+        }
+    }
+
+    private struct PhoneLookupRequest: Encodable { let phone: String }
+
+    /// Asks whether an account exists before an OTP is spent on the number, and
+    /// under which role.
+    ///
+    /// Best-effort by design: a deployment that predates `/auth/phone/lookup`
+    /// answers 404, and an installed app outlives any single backend deploy. A
+    /// nil here means "could not check" and the caller goes on to send the code
+    /// — verify still rejects unregistered numbers, so this costs an avoidable
+    /// SMS, not a security check.
+    func phoneLookup(countryCode: String, phone: String) async -> PhoneLookupData? {
+        let e164 = countryCode + phone.filter(\.isNumber)
+        return try? await APIClient.shared.post("/auth/phone/lookup",
+                                                body: PhoneLookupRequest(phone: e164),
+                                                authorized: false)
+    }
+
+    /// The reason this number may not sign in under `role`, or nil when it may.
+    ///
+    /// Only roles the picker can express are enforced. The backend also has
+    /// VENDOR / LANDOWNER / REFERRAL, which have no pill — blocking those would
+    /// lock them out of the app entirely.
+    func signInProblem(_ lookup: PhoneLookupData, pickedRole: String) -> (message: String, actualRole: String?)? {
+        if !lookup.exists {
+            return ("No account found for this number. Create an account first.", nil)
+        }
+        if lookup.suspended {
+            return ("Account suspended. Please contact support.", nil)
+        }
+        guard let actual = Roles.forValue(lookup.role), !pickedRole.isEmpty,
+              actual.value.caseInsensitiveCompare(pickedRole) != .orderedSame else { return nil }
+        return ("This number is registered as a \(actual.label) account.", actual.value)
+    }
     // MARK: Flow
 
     /// Sends an OTP to the phone — the login endpoint for an existing user, or the
@@ -133,7 +184,30 @@ final class AuthStore: ObservableObject {
         UserDefaults.standard.set(result.builderId, forKey: builderIdKey)
     }
 
+    // MARK: Profile picture
+    //
+    // Whoever holds the token; there is no user id in the path by design.
+
+    /// Replaces the signed-in user's avatar and updates the stored session, so
+    /// every screen showing initials picks up the photo without a reload.
+    func uploadAvatar(data: Data, fileName: String, mimeType: String) async throws {
+        let updated: AuthUser = try await APIClient.shared.upload(
+            "/auth/me/avatar", fileData: data, fileName: fileName, mimeType: mimeType
+        )
+        user = updated
+        persistSession()
+    }
+
+    func removeAvatar() async throws {
+        let updated: AuthUser = try await APIClient.shared.delete("/auth/me/avatar")
+        user = updated
+        persistSession()
+    }
+
     func logout() {
+        // An untaken notification link belongs to the session that just ended —
+        // it must not open on whoever signs in next.
+        DeepLinkCenter.shared.clear()
         accessToken = nil
         user = nil
         builderId = nil

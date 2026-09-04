@@ -2,7 +2,7 @@ import SwiftUI
 
 struct CPReferralView: View {
     @EnvironmentObject private var auth: AuthStore
-    @StateObject private var model = CPGrowthDataModel()
+    @StateObject private var model = CPGrowthModel()
     @Environment(\.openURL) private var openURL
 
     private var code: String {
@@ -60,6 +60,26 @@ struct CPReferralView: View {
                     earn("₹500", "Per Level-1 deal", .brandTeal)
                     earn("₹200", "Per Level-2 deal", .indigo)
                 }.padding(.horizontal)
+
+                // The tree itself. Nothing is wired to populate it yet, so the
+                // page says so — a page that simply stops after the tiles reads
+                // as one that failed to load.
+                VStack(spacing: 10) {
+                    Image(systemName: "person.3")
+                        .font(.title)
+                        .foregroundStyle(Color.dealioTextSecondary)
+                    Text("No referrals yet")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.dealioTextPrimary)
+                    Text("Share your code above. Once other agents join and add deals, your referral tree appears here.")
+                        .font(.caption)
+                        .foregroundStyle(Color.dealioTextSecondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.vertical, 16).padding(.horizontal, 20)
+                .frame(maxWidth: .infinity)
+                .cardSurface()
+                .padding(.horizontal)
             }
             .padding(.vertical, 12)
         }

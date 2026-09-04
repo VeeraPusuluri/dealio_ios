@@ -17,6 +17,7 @@ final class CPProjectsModel: ObservableObject {
 }
 
 struct CPProjectsView: View {
+    @EnvironmentObject private var router: PortalRouter
     @StateObject private var model = CPProjectsModel()
     @State private var query = ""
 
@@ -28,7 +29,7 @@ struct CPProjectsView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: router.path(2)) {
             Group {
                 if model.loading {
                     ProgressView()
@@ -55,8 +56,9 @@ struct CPProjectsView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.dealioMist.ignoresSafeArea())
+            .portalDestinations()
             .navigationTitle("Projects")
-            .navigationDestination(for: Project.self) { CustomerProjectDetailView(project: $0) }
+            .navigationDestination(for: Project.self) { CustomerProjectDetailView(project: $0, viewer: .cp) }
             .task { await model.load() }
             .refreshable { await model.load() }
         }

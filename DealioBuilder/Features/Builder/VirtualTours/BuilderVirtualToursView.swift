@@ -19,7 +19,7 @@ private func youtubeThumb(_ url: String) -> URL? {
 
 struct BuilderVirtualToursView: View {
     @EnvironmentObject private var auth: AuthStore
-    @StateObject private var model = BuilderProjectsListModel()
+    @StateObject private var model = BuilderProjectsModel()
     @State private var selectedId: Int?
 
     private var project: Project? { model.projects.first { $0.id == selectedId } ?? model.projects.first }
@@ -78,17 +78,5 @@ struct BuilderVirtualToursView: View {
         .navigationTitle("Virtual Tours")
         .navigationBarTitleDisplayMode(.inline)
         .task { if let id = await auth.resolvedBuilderId() { await model.load(builderId: id) } }
-    }
-}
-
-/// Shared loader for the builder project list (used by tours, RERA, etc.).
-@MainActor
-final class BuilderProjectsListModel: ObservableObject {
-    @Published var projects: [Project] = []
-    @Published var loading = true
-    func load(builderId: Int) async {
-        loading = projects.isEmpty
-        projects = (try? await APIClient.shared.get("/builder/\(builderId)/projects")) ?? []
-        loading = false
     }
 }

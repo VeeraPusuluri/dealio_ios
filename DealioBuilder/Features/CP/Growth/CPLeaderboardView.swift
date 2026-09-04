@@ -1,26 +1,10 @@
 import SwiftUI
 
-@MainActor
-final class CPGrowthDataModel: ObservableObject {
-    @Published var leads: [CpLead] = []
-    @Published var profile: CpProfile?
-    @Published var loading = true
-
-    func load(cpUserId: Int) async {
-        loading = leads.isEmpty && profile == nil
-        async let leadsReq: [CpLead] = APIClient.shared.get("/cp/\(cpUserId)/leads")
-        async let profileReq: CpProfile = APIClient.shared.get("/cp/\(cpUserId)/profile")
-        leads = (try? await leadsReq) ?? []
-        profile = try? await profileReq
-        loading = false
-    }
-}
-
 private let monthlyGoal = 5
 
 struct CPLeaderboardView: View {
     @EnvironmentObject private var auth: AuthStore
-    @StateObject private var model = CPGrowthDataModel()
+    @StateObject private var model = CPGrowthModel()
 
     private var bookedTotal: Int { model.leads.filter { $0.status == "Booked" }.count }
     private var bookedMonth: Int {

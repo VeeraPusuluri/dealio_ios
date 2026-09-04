@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 import UniformTypeIdentifiers
 
 @MainActor
@@ -8,6 +9,7 @@ final class CPProfileModel: ObservableObject {
     @Published var uploadingDoc: String?
     @Published var sendingOtp = false
     @Published var verifyingOtp = false
+    @Published var saving = false
     @Published var otpSent = false
     @Published var toast: String?
 
@@ -35,6 +37,37 @@ final class CPProfileModel: ObservableObject {
             await load(cpUserId: cpUserId)
         } catch {
             toast = "Failed to upload document"
+        }
+    }
+
+    /// Replaces the partner's portrait.
+    ///
+    /// The avatar is the *account's*, not the CP profile's — one photo follows
+    /// the person across every portal — so it goes through `AuthStore`, which
+    /// also refreshes the session every other screen reads its initials from.
+    func uploadAvatar(auth: AuthStore, data: Data) async {
+        uploadingDoc = "avatar"
+        defer { uploadingDoc = nil }
+        do {
+            try await auth.uploadAvatar(data: data, fileName: "avatar.jpg", mimeType: "image/jpeg")
+            toast = "Photo updated"
+            await load(cpUserId: auth.user?.id ?? 0)
+        } catch { toast = authMessage(error) }
+    }
+
+    /// Saves the details a partner can change themselves. The phone is the login
+    /// identity and is verified through OTP, so it is not on this form.
+    func saveProfile(cpUserId: Int, _ request: CPService.ProfileUpdateRequest) async -> Bool {
+        saving = true
+        defer { saving = false }
+        do {
+            try await CPService.updateProfile(cpUserId: cpUserId, request)
+            toast = "Profile saved"
+            await load(cpUserId: cpUserId)
+            return true
+        } catch {
+            toast = authMessage(error)
+            return false
         }
     }
 
@@ -77,6 +110,9 @@ struct CPProfileView: View {
     @StateObject private var model = CPProfileModel()
     @State private var docPickerFor: String?
     @State private var showPhoneVerify = false
+    @State private var editing = false
+    @State private var pickingPhoto = false
+    @State private var photoPick: PhotosPickerItem?
 
     private var cpUserId: Int { auth.user?.id ?? 0 }
 
@@ -87,29 +123,76 @@ struct CPProfileView: View {
                     let cp = model.profile?.cp
                     let name = model.profile?.fullName ?? auth.user?.fullName ?? "Partner"
 
-                    // Header
-                    VStack(spacing: 12) {
-                        InitialsAvatar(name: name, size: 72)
-                        VStack(spacing: 4) {
-                            Text(name).font(.title3.weight(.bold))
-                            if let tier = cp?.tier {
-                                Text("\(tier) Partner").font(.caption.weight(.semibold))
-                                    .padding(.horizontal, 10).padding(.vertical, 3)
-                                    .background(Color.dealioOrange.opacity(0.15), in: Capsule())
-                                    .foregroundStyle(Color.dealioOrange)
-                            }
-                        }
-                    }
+                    // The credential — the same facts as a header, rendered as
+                    // the artifact a partner holds up to a customer.
+                    CPCredentialCard(
+                        name: name,
+                        tier: cp?.tier ?? "Silver",
+                        photoUrl: cp?.photoUrl ?? auth.user?.avatarUrl,
+                        phone: model.profile?.phone ?? auth.user?.phone,
+                        city: cp?.city,
+                        reraNumber: cp?.reraNumber,
+                        authorizedBuilders: model.profile?.authorizedBuilders ?? [],
+                        partnerId: model.profile?.id ?? auth.user?.id,
+                        uploadingPhoto: model.uploadingDoc == "avatar",
+                        onChangePhoto: { pickingPhoto = true }
+                    )
+                    .padding(.horizontal)
                     .padding(.top, 16)
+
+                    // What they have earned, which is the number a partner opens
+                    // this page to check.
+                    HStack(spacing: 10) {
+                        earningsTile("Total earned", Money.inr(cp?.totalEarnings ?? 0), .green)
+                        earningsTile("Pending", Money.inr(cp?.pendingCommission ?? 0), .orange)
+                        earningsTile("Deals", "\(cp?.totalDeals ?? 0)", .brandTeal)
+                    }
+                    .padding(.horizontal)
 
                     // Details
                     VStack(spacing: 0) {
+                        HStack {
+                            SectionHeader(title: "Details")
+                            Spacer()
+                            Button("Edit") { editing = true }.font(.caption.weight(.semibold))
+                        }
+                        .padding(.vertical, 10)
                         InfoRow(label: "Phone", value: model.profile?.phone ?? auth.user?.phone ?? "—")
                         InfoRow(label: "Email", value: model.profile?.email ?? "—")
                         InfoRow(label: "City", value: cp?.city ?? "—")
                         InfoRow(label: "RERA", value: cp?.reraNumber ?? "—")
+                        if let bio = cp?.bio?.trimmedOrNil {
+                            Text(bio)
+                                .font(.caption).foregroundStyle(Color.dealioTextSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 10)
+                        }
                     }
                     .padding(.horizontal, 16).cardSurface().padding(.horizontal)
+
+                    // Builders who have formally authorised this partner to
+                    // represent them — the thing a buyer is really asking about
+                    // when they ask whether a partner is "official".
+                    if let builders = model.profile?.authorizedBuilders, !builders.isEmpty {
+                        VStack(alignment: .leading, spacing: 0) {
+                            SectionHeader(title: "Authorised by").padding(.vertical, 10)
+                            ForEach(builders) { builder in
+                                HStack {
+                                    Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
+                                    Text(builder.companyName.nilIfEmpty ?? "Builder")
+                                        .font(.subheadline)
+                                    Spacer()
+                                    if let since = builder.authorizedAt?.prefix(10), !since.isEmpty {
+                                        Text(String(since))
+                                            .font(.caption2).foregroundStyle(Color.dealioTextSecondary)
+                                    }
+                                }
+                                .padding(.vertical, 9)
+                            }
+                        }
+                        .padding(.horizontal, 16).cardSurface().padding(.horizontal)
+                    }
 
                     // Verification
                     VStack(alignment: .leading, spacing: 0) {
@@ -125,6 +208,10 @@ struct CPProfileView: View {
                             label: "PAN", verified: cp?.panVerified ?? false,
                             hasDoc: (cp?.panUrl?.isEmpty == false), uploading: model.uploadingDoc == "pan"
                         ) { docPickerFor = "pan" }
+                        DocVerifyRow(
+                            label: "RERA certificate", verified: cp?.reraVerified ?? false,
+                            hasDoc: (cp?.reraUrl?.isEmpty == false), uploading: model.uploadingDoc == "rera"
+                        ) { docPickerFor = "rera" }
                     }
                     .padding(.horizontal, 16).cardSurface().padding(.horizontal)
 
@@ -157,6 +244,19 @@ struct CPProfileView: View {
                     Task { await model.uploadDocument(docType: docType, fileURL: url, cpUserId: cpUserId) }
                 }
             }
+            .photosPicker(isPresented: $pickingPhoto, selection: $photoPick, matching: .images)
+            .onChange(of: photoPick) { _, item in
+                Task {
+                    guard let data = try? await item?.loadTransferable(type: Data.self) else { return }
+                    photoPick = nil
+                    await model.uploadAvatar(auth: auth, data: data)
+                }
+            }
+            .sheet(isPresented: $editing) {
+                EditCPProfileSheet(profile: model.profile, saving: model.saving) { request in
+                    Task { if await model.saveProfile(cpUserId: cpUserId, request) { editing = false } }
+                }
+            }
             .sheet(isPresented: $showPhoneVerify) {
                 PhoneVerifySheet(
                     phone: model.profile?.phone ?? auth.user?.phone ?? "",
@@ -165,6 +265,80 @@ struct CPProfileView: View {
             }
             .alert(model.toast ?? "", isPresented: Binding(get: { model.toast != nil }, set: { if !$0 { model.toast = nil } })) {
                 Button("OK", role: .cancel) {}
+            }
+        }
+    }
+}
+
+extension CPProfileView {
+    fileprivate func earningsTile(_ label: String, _ value: String, _ tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                .foregroundStyle(tint)
+                .lineLimit(1).minimumScaleFactor(0.6)
+            Text(label.uppercased())
+                .font(.system(size: 9, weight: .bold)).tracking(0.5)
+                .foregroundStyle(Color.dealioTextSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .cardSurface(cornerRadius: 14)
+    }
+}
+
+private struct EditCPProfileSheet: View {
+    let profile: CpProfile?
+    let saving: Bool
+    let onSave: (CPService.ProfileUpdateRequest) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var fullName = ""
+    @State private var email = ""
+    @State private var city = ""
+    @State private var bio = ""
+    @State private var rera = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("You") {
+                    TextField("Full name", text: $fullName).textContentType(.name)
+                    TextField("Email", text: $email)
+                        .keyboardType(.emailAddress).textInputAutocapitalization(.never)
+                    // Phone is the login identity and is changed through OTP, so
+                    // it is shown on the page and not edited here.
+                    InfoLine("Phone", profile?.phone?.nilIfEmpty ?? "—")
+                }
+                Section("How buyers see you") {
+                    TextField("City you work in", text: $city)
+                    TextField("A line about your track record", text: $bio, axis: .vertical)
+                        .lineLimit(2...5)
+                    TextField("RERA registration number", text: $rera)
+                        .textInputAutocapitalization(.characters)
+                }
+            }
+            .navigationTitle("Edit profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(saving ? "Saving…" : "Save") {
+                        onSave(.init(
+                            fullName: fullName.trimmedOrNil, email: email.trimmedOrNil,
+                            city: city.trimmedOrNil, bio: bio.trimmedOrNil,
+                            reraNumber: rera.trimmedOrNil
+                        ))
+                    }
+                    .disabled(saving)
+                }
+            }
+            .onAppear {
+                fullName = profile?.fullName ?? ""
+                email = profile?.email ?? ""
+                city = profile?.cp?.city ?? ""
+                bio = profile?.cp?.bio ?? ""
+                rera = profile?.cp?.reraNumber ?? ""
             }
         }
     }

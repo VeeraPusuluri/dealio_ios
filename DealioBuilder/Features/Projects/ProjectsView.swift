@@ -1,13 +1,14 @@
 import SwiftUI
 
 struct ProjectsView: View {
+    @EnvironmentObject private var router: PortalRouter
     @EnvironmentObject private var auth: AuthStore
     @State private var projects: [Project] = []
     @State private var loading = false
     @State private var errorMessage: String?
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: router.path(1)) {
             Group {
                 if loading && projects.isEmpty {
                     LoadingList(rows: 4) { ProjectRow.placeholder }
@@ -37,7 +38,17 @@ struct ProjectsView: View {
                 }
             }
             .background(Color(.systemGroupedBackground))
+            .portalDestinations()
             .navigationTitle("Projects")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        BuilderProjectFormView(projectId: nil) { Task { await load() } }
+                    } label: {
+                        Label("New project", systemImage: "plus")
+                    }
+                }
+            }
             .refreshable { await load() }
             .task { await load() }
         }

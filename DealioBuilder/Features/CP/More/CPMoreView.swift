@@ -1,16 +1,19 @@
 import SwiftUI
 
 struct CPMoreView: View {
+    @EnvironmentObject private var router: PortalRouter
     @EnvironmentObject private var auth: AuthStore
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: router.path(4)) {
             List {
                 Section("CRM") {
                     CPNavRow("Conversations", "bubble.left.and.bubble.right", .blue) { CPConversationsView() }
                     CPNavRow("Contacts", "person.crop.circle.badge.plus", .teal) { CPContactsView() }
                     CPNavRow("Follow-ups", "bell.badge", .orange) { CPFollowUpsView() }
-                    CPNavRow("Meetings", "calendar", .red) { CPMeetingsView() }
+                    CPNavRow("Site visits", "calendar", .red) { CPMeetingsView() }
+                    CPNavRow("Call logs", "phone.badge.checkmark", .indigo) { CPCallLogsView() }
+                    CPNavRow("Meetups", "person.3.sequence", .pink) { CPMeetupsView() }
                 }
                 Section("Grow your business") {
                     CPNavRow("Leaderboard", "trophy", .yellow) { CPLeaderboardView() }
@@ -25,6 +28,7 @@ struct CPMoreView: View {
                     CPNavRow("JV Opportunities", "hands.sparkles", .brown) { CPJVView() }
                 }
                 Section("Account") {
+                    CPNavRow("Notifications", "bell", .red) { CPNotificationsView() }
                     CPNavRow("Profile & verification", "person.crop.circle", .gray) { CPProfileView() }
                 }
                 Section {
@@ -33,6 +37,7 @@ struct CPMoreView: View {
                     }
                 }
             }
+            .portalDestinations()
             .navigationTitle("More")
         }
     }

@@ -27,8 +27,18 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Add site visits and meetups you are attending to your calendar.</string>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>Add site visits and meetups you are attending to your calendar.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Import your phone book into your Dealio contact list so you can call, message and invite buyers without retyping numbers.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Dealio uses Face ID to unlock the app and keep your account secure.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save the project flyers you build in Content Studio straight to your photo library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose cover photos for your projects and meetups from your photo library.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

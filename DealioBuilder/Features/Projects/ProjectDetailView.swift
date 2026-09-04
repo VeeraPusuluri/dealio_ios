@@ -3,6 +3,8 @@ import SwiftUI
 struct ProjectDetailView: View {
     let project: Project
 
+    @State private var editing = false
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -43,6 +45,10 @@ struct ProjectDetailView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("Project")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar { projectActions }
+        .navigationDestination(isPresented: $editing) {
+            BuilderProjectFormView(projectId: project.id)
+        }
     }
 
     @ViewBuilder private var cover: some View {
@@ -87,6 +93,24 @@ struct ProjectDetailView: View {
         .cardSurface()
     }
 
+    /// The three things a builder does to a project once it exists. They sit in
+    /// the toolbar rather than the page so they stay reachable from any scroll
+    /// position.
+    private var projectActions: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Button("Edit project", systemImage: "pencil") { editing = true }
+                NavigationLink {
+                    BuilderProjectDocumentsView(project: project)
+                } label: {
+                    Label("Documents", systemImage: "folder")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+        }
+    }
+
     private var priceText: String {
         switch (project.priceMin, project.priceMax) {
         case let (min?, max?): return "\(Money.inr(min)) – \(Money.inr(max))"
@@ -126,8 +150,4 @@ struct InfoTile: View {
         .padding(14)
         .cardSurface(cornerRadius: 14)
     }
-}
-
-private extension String {
-    var nilIfEmpty: String? { isEmpty ? nil : self }
 }

@@ -52,10 +52,23 @@ struct CustomerProjectDetailView: View {
     @StateObject private var model: ProjectDetailModel
     @State private var showBooking = false
     @State private var showLoanApply = false
+    @State private var showAddLead = false
+    @State private var sharing: ShareLinkPayload?
+    @State private var working = false
+    @State private var message: String?
     @State private var galleryPage: Int? = 0
     @State private var selectedTowerIdx = 0
 
-    init(project: Project) { _model = StateObject(wrappedValue: ProjectDetailModel(project: project)) }
+    /// Who is reading the page. The sections are identical for a buyer and a
+    /// partner — Android shares them verbatim — and only the actions differ: a
+    /// buyer books and applies for a loan; a partner shares a tracked link,
+    /// books on someone's behalf and adds a lead.
+    var viewer: DealRole = .customer
+
+    init(project: Project, viewer: DealRole = .customer) {
+        _model = StateObject(wrappedValue: ProjectDetailModel(project: project))
+        self.viewer = viewer
+    }
 
     private var p: Project { model.project }
 
@@ -94,6 +107,23 @@ struct CustomerProjectDetailView: View {
             // Sticky bottom CTA bar
             bottomBar
         }
+        .toolbar {
+            if viewer == .cp {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { Task { await shareLink() } } label: {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .disabled(working)
+                    .accessibilityLabel("Share a tracked link")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showAddLead = true } label: {
+                        Image(systemName: "person.crop.circle.badge.plus")
+                    }
+                    .accessibilityLabel("Add a lead on this project")
+                }
+            }
+        }
         .sheet(isPresented: $showBooking) {
             BookingSheetView(project: p, customerName: auth.user?.fullName ?? "Customer", customerPhone: auth.phone)
         }
@@ -101,6 +131,45 @@ struct CustomerProjectDetailView: View {
             LoanApplySheetView(project: p, customerName: auth.user?.fullName ?? "Customer",
                                customerPhone: auth.phone, customerEmail: auth.user?.email)
         }
+        .sheet(isPresented: $showAddLead) {
+            CPProjectAddLeadSheet(projectName: p.name, working: working) { name, phone, email in
+                showAddLead = false
+                Task { await addLead(name: name, phone: phone, email: email) }
+            }
+            .presentationDetents([.medium])
+        }
+        .sheet(item: $sharing) { payload in
+            ActivityShareSheet(items: [payload.text])
+        }
+        .alert("Project", isPresented: Binding(get: { message != nil },
+                                               set: { if !$0 { message = nil } })) {
+            Button("OK", role: .cancel) { message = nil }
+        } message: { Text(message ?? "") }
+    }
+
+    // MARK: - Partner actions
+
+    /// Mints a tracked share link and hands it to the system share sheet, so a
+    /// click on it attributes the buyer back to this partner.
+    private func shareLink() async {
+        working = true
+        defer { working = false }
+        do {
+            let link = try await CPService.shareLink(cpUserId: auth.user?.id ?? 0, projectId: p.id)
+            let url = link.url.nilIfEmpty ?? ""
+            sharing = ShareLinkPayload(text: "Check out \(p.name) on Dealio: \(url)")
+        } catch { message = authMessage(error) }
+    }
+
+    private func addLead(name: String, phone: String, email: String?) async {
+        working = true
+        defer { working = false }
+        do {
+            try await CPService.createLead(cpUserId: auth.user?.id ?? 0, .init(
+                projectId: p.id, customerName: name, customerPhone: phone, customerEmail: email
+            ))
+            message = "Lead added — find it under Leads."
+        } catch { message = authMessage(error) }
     }
 
     // MARK: - Gallery
@@ -653,8 +722,8 @@ struct CustomerProjectDetailView: View {
 
     private var bottomBar: some View {
         HStack(spacing: 12) {
-            Button { showLoanApply = true } label: {
-                Text("Apply for Loan")
+            Button { viewer == .cp ? (showAddLead = true) : (showLoanApply = true) } label: {
+                Text(viewer == .cp ? "Add a lead" : "Apply for Loan")
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity).padding(.vertical, 15)
                     .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -662,7 +731,7 @@ struct CustomerProjectDetailView: View {
                     .foregroundStyle(.brandTeal)
             }
             Button { showBooking = true } label: {
-                Text("Book a Visit")
+                Text(viewer == .cp ? "Book a visit for a buyer" : "Book a Visit")
                     .font(.subheadline.weight(.bold))
                     .frame(maxWidth: .infinity).padding(.vertical, 15)
                     .background(LinearGradient.brand, in: RoundedRectangle(cornerRadius: 14, style: .continuous))

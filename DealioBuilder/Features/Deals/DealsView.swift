@@ -1,13 +1,14 @@
 import SwiftUI
 
 struct DealsView: View {
+    @EnvironmentObject private var router: PortalRouter
     @EnvironmentObject private var auth: AuthStore
     @State private var deals: [Deal] = []
     @State private var loading = false
     @State private var errorMessage: String?
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: router.path(3)) {
             Group {
                 if loading && deals.isEmpty {
                     LoadingList(rows: 5) { DealRow.placeholder }
@@ -23,9 +24,15 @@ struct DealsView: View {
                     ScrollView {
                         LazyVStack(spacing: 12) {
                             ForEach(deals) { deal in
-                                DealRow(deal: deal)
-                                    .padding(16)
-                                    .cardSurface()
+                                NavigationLink {
+                                    BuilderDealDetailView(dealId: deal.id,
+                                                          title: deal.customerName ?? "Deal")
+                                } label: {
+                                    DealRow(deal: deal)
+                                        .padding(16)
+                                        .cardSurface()
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                         .padding()
@@ -33,6 +40,7 @@ struct DealsView: View {
                 }
             }
             .background(Color(.systemGroupedBackground))
+            .portalDestinations()
             .navigationTitle("Deals")
             .refreshable { await load() }
             .task { await load() }

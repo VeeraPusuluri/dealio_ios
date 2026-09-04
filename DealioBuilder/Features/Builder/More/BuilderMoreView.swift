@@ -1,19 +1,21 @@
 import SwiftUI
 
 struct BuilderMoreView: View {
+    @EnvironmentObject private var router: PortalRouter
     @EnvironmentObject private var auth: AuthStore
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: router.path(4)) {
             List {
                 Section("Workspace") {
                     NavLink("Conversations", "bubble.left.and.bubble.right", .blue) { BuilderConversationsView() }
-                    NavLink("Pipeline", "rectangle.stack", .brandTeal) { BuilderPipelineView() }
                     NavLink("Site Visits", "calendar", .cyan) { BuilderMeetingsView() }
                     NavLink("Commissions", "indianrupeesign.circle", .green) { BuilderCommissionsView() }
                     NavLink("Demand Letters", "doc.plaintext", .brown) { BuilderDemandLettersView() }
                     NavLink("Loan Cases", "creditcard", .indigo) { BuilderLoansView() }
                     NavLink("Analytics", "chart.bar.xaxis", .red) { BuilderAnalyticsView() }
+                    NavLink("Inventory", "square.grid.3x3", .orange) { BuilderInventoryView() }
+                    NavLink("Shortlists", "heart.text.square", .pink) { BuilderShortlistsView() }
                 }
                 Section("Compliance & marketing") {
                     NavLink("RERA Compliance", "checkmark.seal", .green) { BuilderRERAView() }
@@ -29,7 +31,7 @@ struct BuilderMoreView: View {
                 }
                 Section("Account") {
                     NavLink("New Project", "plus.app", .green) { BuilderProjectFormView() }
-                    NavLink("Notifications", "bell", .red) { BuilderNotificationsView() }
+                    NavLink("Notifications", "bell", .red) { BuilderNotificationsScreen() }
                     NavLink("Settings", "gearshape", .gray) { BuilderSettingsView() }
                 }
                 Section {
@@ -38,6 +40,7 @@ struct BuilderMoreView: View {
                     }
                 }
             }
+            .portalDestinations()
             .navigationTitle("More")
         }
     }

@@ -40,6 +40,7 @@ final class OverviewViewModel: ObservableObject {
 }
 
 struct OverviewView: View {
+    @EnvironmentObject private var router: PortalRouter
     @Binding var selection: Int
     @EnvironmentObject private var auth: AuthStore
     @StateObject private var viewModel = OverviewViewModel()
@@ -47,7 +48,7 @@ struct OverviewView: View {
     private let columns = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: router.path(0)) {
             ScrollView {
                 if viewModel.loading && viewModel.deals.isEmpty && viewModel.projects.isEmpty {
                     loadingState
@@ -74,6 +75,7 @@ struct OverviewView: View {
                 }
             }
             .background(Color(.systemGroupedBackground))
+            .portalDestinations()
             .navigationTitle("Overview")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

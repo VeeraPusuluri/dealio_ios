@@ -25,10 +25,23 @@ struct CPBrochureView: View {
     private var cpName: String { model.profile?.fullName ?? auth.user?.fullName ?? "Your Agent" }
     private var cpPhone: String? { model.profile?.phone ?? auth.user?.phone }
 
+    /// The brochure as forwardable text.
+    ///
+    /// Commission *is* on this one, unlike the flyer: a brochure goes to another
+    /// partner or into the CP's own notes, not to the buyer.
     private func brochureText(_ p: Project) -> String {
-        let loc = [p.locality, p.city].compactMap { $0 }.joined(separator: ", ")
-        let price = (p.priceMin ?? 0) > 0 ? "Starting \(Money.inr(p.priceMin))" : "Price on request"
-        return "🏠 *\(p.name)*\n📍 \(loc)\n💰 \(price)\n\n📞 Contact: *\(cpName)*\(cpPhone.map { " — \($0)" } ?? "")"
+        let configs = (p.configurations ?? []).filter { !$0.isEmpty }.joined(separator: " / ")
+        let price = p.priceLow.map { Fmt.compactPrice($0) } ?? "Price on request"
+        return [
+            "🏠 *\(p.name)*",
+            p.whereLine.nilIfEmpty.map { "📍 \($0)" },
+            configs.nilIfEmpty.map { "🛏 \($0)" },
+            "💰 Starting \(price)",
+            p.commissionValue.map { "💼 Commission: \(Fmt.percent($0))" },
+            "",
+            "📞 Contact: *\(cpName)*" + (cpPhone.map { " — \($0)" } ?? ""),
+            model.profile?.cp?.reraNumber?.nilIfEmpty.map { "✅ RERA: \($0)" },
+        ].compactMap { $0 }.joined(separator: "\n")
     }
 
     var body: some View {
@@ -49,9 +62,33 @@ struct CPBrochureView: View {
                             ProjectHeroImage(project: p).frame(height: 180).clipped()
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(p.name).font(.title3.weight(.bold))
-                                let loc = [p.locality, p.city].compactMap { $0 }.joined(separator: ", ")
-                                if !loc.isEmpty { Label(loc, systemImage: "mappin.and.ellipse").font(.caption).foregroundStyle(.secondary) }
-                                if (p.priceMin ?? 0) > 0 { Text("Starting \(Money.inr(p.priceMin))").font(.subheadline.weight(.bold)) }
+                                if let loc = p.whereLine.nilIfEmpty {
+                                    Label(loc, systemImage: "mappin.and.ellipse")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                if let configs = (p.configurations ?? []).filter({ !$0.isEmpty }).nilIfEmptyChips {
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 6) {
+                                            ForEach(configs, id: \.self) { config in
+                                                Text(config)
+                                                    .font(.caption2.weight(.medium))
+                                                    .foregroundStyle(Color.dealioTextSecondary)
+                                                    .padding(.horizontal, 10).padding(.vertical, 4)
+                                                    .background(Color.dealioFieldFill, in: Capsule())
+                                            }
+                                        }
+                                    }
+                                }
+                                if let price = p.priceLow {
+                                    Text("Starting \(Fmt.compactPrice(price))").font(.subheadline.weight(.bold))
+                                }
+                                if let commission = p.commissionValue {
+                                    Text("\(Fmt.percent(commission)) Commission")
+                                        .font(.caption2.weight(.bold))
+                                        .foregroundStyle(Color.brandTeal)
+                                        .padding(.horizontal, 10).padding(.vertical, 4)
+                                        .background(Color(hex: 0xEAFAFC), in: Capsule())
+                                }
                                 Divider()
                                 HStack(spacing: 10) {
                                     InitialsAvatar(name: cpName, tint: .dealioOrange, size: 36)
@@ -88,4 +125,9 @@ struct CPBrochureView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await model.load(cpUserId: auth.user?.id ?? 0) }
     }
+}
+
+private extension Array where Element == String {
+    /// Nil for an empty list, so a `if let` reads as "there is something to draw".
+    var nilIfEmptyChips: [String]? { isEmpty ? nil : self }
 }

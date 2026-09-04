@@ -42,6 +42,13 @@ targets:
       properties:
         CFBundleDisplayName: Dealio
         NSFaceIDUsageDescription: Dealio uses Face ID to unlock the app and keep your account secure.
+        # Every one of these is reachable from a channel partner's workflow, and
+        # iOS terminates the app on first use if the string is missing.
+        NSContactsUsageDescription: Import your phone book into your Dealio contact list so you can call, message and invite buyers without retyping numbers.
+        NSPhotoLibraryAddUsageDescription: Save the project flyers you build in Content Studio straight to your photo library.
+        NSPhotoLibraryUsageDescription: Choose cover photos for your projects and meetups from your photo library.
+        NSCalendarsUsageDescription: Add site visits and meetups you are attending to your calendar.
+        NSCalendarsWriteOnlyAccessUsageDescription: Add site visits and meetups you are attending to your calendar.
         UILaunchScreen:
           UIColorName: LaunchBackground
         UIApplicationSceneManifest:

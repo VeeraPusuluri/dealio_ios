@@ -6,14 +6,17 @@ import Foundation
 /// A site-visit request — `builder/:id/meetings`.
 struct BuilderMeeting: Codable, Identifiable {
     let id: Int
-    let customerName: String?
-    let customerPhone: String?
-    let status: String?
-    let preferredDate: String?
-    let preferredTime: String?
-    let confirmedDate: String?
-    let confirmedTime: String?
-    let meetingType: String?
+    var customerName: String?
+    var customerPhone: String?
+    var projectName: String?
+    var cpName: String?
+    var status: String?
+    var preferredDate: String?
+    var preferredTime: String?
+    var confirmedDate: String?
+    var confirmedTime: String?
+    var meetingType: String?
+    var notes: String?
 
     var whenText: String {
         [confirmedDate ?? preferredDate, confirmedTime ?? preferredTime]

@@ -9,7 +9,7 @@ private struct MonthPoint: Identifiable {
 
 struct CPSocialAnalyticsView: View {
     @EnvironmentObject private var auth: AuthStore
-    @StateObject private var model = CPGrowthDataModel()
+    @StateObject private var model = CPGrowthModel()
 
     private var total: Int { model.leads.count }
     private var booked: Int { model.leads.filter { $0.status == "Booked" }.count }

@@ -106,13 +106,14 @@ final class ExploreModel: ObservableObject {
 }
 
 struct ExploreView: View {
+    @EnvironmentObject private var router: PortalRouter
     @EnvironmentObject private var auth: AuthStore
     @StateObject private var model = ExploreModel()
     @State private var searchExpanded = false
     @FocusState private var searchFocused: Bool
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: router.path(0)) {
             GeometryReader { geo in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
@@ -160,6 +161,7 @@ struct ExploreView: View {
             .ignoresSafeArea(.container, edges: .top)
             }
             .navigationDestination(for: Project.self) { CustomerProjectDetailView(project: $0) }
+            .portalDestinations()
             .navigationBarHidden(true)
             .task { await model.load() }
             .refreshable { await model.load() }

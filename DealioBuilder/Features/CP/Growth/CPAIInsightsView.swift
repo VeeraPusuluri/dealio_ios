@@ -33,7 +33,7 @@ private func score(_ lead: CpLead) -> ScoredLead {
 
 struct CPAIInsightsView: View {
     @EnvironmentObject private var auth: AuthStore
-    @StateObject private var model = CPGrowthDataModel()
+    @StateObject private var model = CPGrowthModel()
     @State private var filter = "All"
     @State private var expanded: Int?
     @Environment(\.openURL) private var openURL
@@ -112,7 +112,7 @@ struct CPAIInsightsView: View {
                     .padding(10).frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.brandTeal.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
-                if let phone = s.lead.customerPhone, !phone.isEmpty {
+                if let phone = s.lead.customerPhone.nilIfEmpty {
                     HStack(spacing: 10) {
                         Button { if let u = Share.telURL(phone) { openURL(u) } } label: {
                             Label("Call", systemImage: "phone.fill").font(.caption.weight(.semibold))
@@ -120,7 +120,7 @@ struct CPAIInsightsView: View {
                                 .background(.green, in: Capsule()).foregroundStyle(.white)
                         }
                         Button {
-                            if let u = Share.whatsAppURL(phone: phone, text: "Hi \(s.lead.customerName ?? ""), \(nextAction[s.lead.status ?? ""] ?? "checking in on your property search!")") { openURL(u) }
+                            if let u = Share.whatsAppURL(phone: phone, text: "Hi \(s.lead.customerName), \(nextAction[s.lead.status] ?? "checking in on your property search!")") { openURL(u) }
                         } label: {
                             Label("WhatsApp", systemImage: "message.fill").font(.caption.weight(.semibold))
                                 .padding(.horizontal, 14).padding(.vertical, 8)

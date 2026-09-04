@@ -1,20 +1,5 @@
 import SwiftUI
 
-/// The same self-service roles the web/Android signup offers.
-private struct RoleOption {
-    let value: String
-    let label: String
-    let color: Color
-}
-
-private let signupRoles: [RoleOption] = [
-    RoleOption(value: "CUSTOMER", label: "Customer",        color: .dealioTeal),
-    RoleOption(value: "CP",       label: "Channel Partner", color: .dealioOrange),
-    RoleOption(value: "BUILDER",  label: "Builder",         color: .dealioNavy),
-    RoleOption(value: "BANK",     label: "Bank",            color: Color(hex: 0x16A34A)),
-    RoleOption(value: "NRI",      label: "NRI",             color: Color(hex: 0x7C3AED)),
-]
-
 struct SignupView: View {
     @EnvironmentObject private var auth: AuthStore
     var onGoToLogin: () -> Void
@@ -84,13 +69,8 @@ struct SignupView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundColor(.dealioTextSecondary)
             Spacer().frame(height: 8)
-            FlowLayout(spacing: 8) {
-                ForEach(signupRoles, id: \.value) { item in
-                    RoleChip(label: item.label, color: item.color, selected: role == item.value, enabled: !loading) {
-                        role = item.value
-                    }
-                }
-            }
+            RoleSelector(roles: Roles.signup, selection: $role, showTagline: true)
+                .disabled(loading)
             Spacer().frame(height: 20)
 
             PhoneField(countryCode: $countryCode, phone: $phone, enabled: !loading)

@@ -1,53 +1,5 @@
 import SwiftUI
 
-// MARK: - Notifications
-
-struct BuilderNotificationsView: View {
-    @State private var items: [BuilderNotification] = []
-    @State private var loading = true
-    @State private var error: String?
-
-    var body: some View {
-        Group {
-            if loading { ProgressView() }
-            else if let error { ErrorBanner(message: error).padding() }
-            else if items.isEmpty {
-                ContentUnavailableView("No notifications", systemImage: "bell",
-                    description: Text("Updates on your deals, leads and meetings appear here."))
-            } else {
-                List(items) { n in
-                    HStack(alignment: .top, spacing: 12) {
-                        Image(systemName: icon(n.type)).foregroundStyle(.brandTeal).frame(width: 26)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(n.title ?? "Notification").font(.subheadline.weight(.semibold))
-                            if let m = n.message { Text(m).font(.caption).foregroundStyle(.secondary) }
-                        }
-                        Spacer()
-                        if n.read == false { Circle().fill(Color.brandTeal).frame(width: 8, height: 8) }
-                    }.padding(.vertical, 4)
-                }.listStyle(.insetGrouped)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity).background(Color.dealioMist.ignoresSafeArea())
-        .navigationTitle("Notifications").navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
-    }
-    private func icon(_ type: String?) -> String {
-        switch (type ?? "").lowercased() {
-        case let t where t.contains("deal"): return "doc.text.fill"
-        case let t where t.contains("lead"): return "person.2.fill"
-        case let t where t.contains("meeting"): return "calendar"
-        default: return "bell.fill"
-        }
-    }
-    private func load() async {
-        loading = items.isEmpty
-        do { items = try await APIClient.shared.get("/builder/notifications") }
-        catch { self.error = authMessage(error) }
-        loading = false
-    }
-}
-
 // MARK: - CP Performance (computed from deals)
 
 private struct CPStat: Identifiable {
@@ -100,35 +52,5 @@ struct BuilderCPPerformanceView: View {
         .navigationTitle("CP Performance").navigationBarTitleDisplayMode(.inline)
         .task { if let id = await auth.resolvedBuilderId() { await model.load(builderId: id) } }
         .refreshable { if let id = await auth.resolvedBuilderId() { await model.load(builderId: id) } }
-    }
-}
-
-// MARK: - Settings
-
-struct BuilderSettingsView: View {
-    @EnvironmentObject private var auth: AuthStore
-
-    var body: some View {
-        List {
-            Section("Account") {
-                row("Name", auth.user?.fullName ?? "—")
-                row("Phone", auth.user?.phone ?? "—")
-                row("Email", auth.user?.email ?? "—")
-                if let id = auth.builderId { row("Builder ID", "\(id)") }
-            }
-            Section("About") {
-                row("App", "Dealio for Builders")
-                row("Backend", "dealio-backend-dev")
-            }
-            Section {
-                Button(role: .destructive) { auth.logout() } label: {
-                    Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
-                }
-            }
-        }
-        .navigationTitle("Settings").navigationBarTitleDisplayMode(.inline)
-    }
-    private func row(_ label: String, _ value: String) -> some View {
-        HStack { Text(label).foregroundStyle(.secondary); Spacer(); Text(value).fontWeight(.medium) }
     }
 }

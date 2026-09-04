@@ -247,3 +247,17 @@ extension NumberFormatter {
         return formatter
     }()
 }
+
+// MARK: - Small string helpers
+
+extension String {
+    /// Nil for an empty string, so `??` can supply a placeholder.
+    var nilIfEmpty: String? { isEmpty ? nil : self }
+
+    /// Trimmed, or nil when nothing is left — what every form field wants before
+    /// it is sent.
+    var trimmedOrNil: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
